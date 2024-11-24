@@ -1,11 +1,10 @@
 package com.project.musicplayer.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Data
@@ -39,6 +38,5 @@ public class Playlist {
     private Set<Song> songs;
 
     @ManyToMany(mappedBy = "likedPlaylists")
-    @JsonIgnore
     private Set<User> users;
 }

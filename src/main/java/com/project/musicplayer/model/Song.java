@@ -1,11 +1,10 @@
 package com.project.musicplayer.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Data
@@ -24,6 +23,9 @@ public class Song {
     @Column(nullable = false)
     private String songUrl;
 
+    @Column(name = "total_duration", nullable = false)
+    private int totalDuration;
+
     @Column(name = "cover_url")
     private String coverUrl;
 
@@ -34,11 +36,9 @@ public class Song {
     private Set<Artist> artists;
 
     @ManyToMany(mappedBy = "likedSongs")
-    @JsonIgnore
     private Set<User> likedBy;
 
     @ManyToMany(mappedBy = "songs")
-    @JsonIgnore
     private Set<Playlist> playlists;
 
     @ManyToMany(cascade = CascadeType.MERGE, fetch = FetchType.EAGER)

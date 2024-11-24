@@ -3,6 +3,8 @@ package com.project.musicplayer.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Entity
 @Data
 @Builder

@@ -1,6 +1,6 @@
 package com.project.musicplayer.controller;
 
-import com.project.musicplayer.dto.*;
+import com.project.musicplayer.dto.auth.*;
 import com.project.musicplayer.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

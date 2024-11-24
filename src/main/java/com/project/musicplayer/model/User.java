@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Data
@@ -21,10 +22,7 @@ public class User {
     private String email;
 
     @Column(name = "firstname", nullable = false)
-    private String firstName;
-
-    @Column(name = "lastname")
-    private String lastName;
+    private String name;
 
     @Column(nullable = false)
     private String password;

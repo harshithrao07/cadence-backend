@@ -1,4 +1,4 @@
-package com.project.musicplayer.dto;
+package com.project.musicplayer.dto.auth;
 
 import jakarta.annotation.Nonnull;
 

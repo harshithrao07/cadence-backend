@@ -2,14 +2,17 @@ package com.project.musicplayer.service;
 
 import com.project.musicplayer.model.Role;
 import com.project.musicplayer.model.InvalidatedToken;
+import com.project.musicplayer.model.User;
 import com.project.musicplayer.repository.JwtRepository;
 import com.project.musicplayer.utility.TokenType;
 import jakarta.annotation.Nonnull;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Mac;
@@ -96,5 +99,20 @@ public class JwtService {
             return jwtRepository.save(invalidatedToken);
         }
         return null;
+    }
+
+    public String getEmailFromHttpRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+
+            String[] sections = token.split("\\.");
+
+            // Decode the token to get the header and payload
+            Base64.Decoder decoder = Base64.getUrlDecoder();
+            String payload = new String(decoder.decode(sections[1]));
+            return extractEmailForPayload(payload);
+        }
+        return "";
     }
 }

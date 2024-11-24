@@ -1,6 +1,6 @@
 package com.project.musicplayer.service;
 
-import com.project.musicplayer.dto.*;
+import com.project.musicplayer.dto.auth.*;
 import com.project.musicplayer.model.Role;
 import com.project.musicplayer.model.User;
 import com.project.musicplayer.repository.UserRepository;
@@ -29,12 +29,11 @@ public class AuthenticationService {
             if (userRepository.existsByEmail(registerRequestDTO.email())) {
                 return ResponseEntity
                         .status(HttpStatus.CONFLICT)
-                        .body(new AuthenticationResponseDTO("", "", "A user with the given email already exists"));
+                        .body(new AuthenticationResponseDTO("", "", "", "A user with the given email already exists"));
             }
 
             User user = User.builder()
-                    .firstName(registerRequestDTO.firstName())
-                    .lastName(registerRequestDTO.lastName())
+                    .name(registerRequestDTO.name())
                     .email(registerRequestDTO.email())
                     .password(passwordEncoder.encode(registerRequestDTO.password()))
                     .role(Role.USER)
@@ -42,15 +41,15 @@ public class AuthenticationService {
 
             User savedUser = userRepository.save(user);
             if (savedUser.getId() == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "An error occurred while creating the user"));
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred while creating the user"));
             }
 
             String accessToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.access);
             String refreshToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(accessToken, refreshToken, "User registered successfully"));
+            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(savedUser.getId().toString(), accessToken, refreshToken, "User registered successfully"));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "An error occurred in the server"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred in the server"));
         }
     }
 
@@ -58,19 +57,19 @@ public class AuthenticationService {
         try {
             Optional<User> user = userRepository.findByEmail(authenticateRequestDTO.email());
             if (user.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "User does not exist"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "", "User does not exist"));
             }
 
             if (!passwordEncoder.matches(authenticateRequestDTO.password(), user.get().getPassword())) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "Password does not match"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "", "Password does not match"));
             }
 
             String accessToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.access);
             String refreshToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(accessToken, refreshToken, "User authenticated successfully"));
+            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(user.get().getId().toString(), accessToken, refreshToken, "User authenticated successfully"));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "An error occurred in the server"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred in the server"));
         }
     }
 

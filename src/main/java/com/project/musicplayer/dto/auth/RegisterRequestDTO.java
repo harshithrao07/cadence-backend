@@ -1,10 +1,9 @@
-package com.project.musicplayer.dto;
+package com.project.musicplayer.dto.auth;
 
 import jakarta.annotation.Nonnull;
 
 public record RegisterRequestDTO(
-        @Nonnull String firstName,
-        String lastName,
+        @Nonnull String name,
         @Nonnull String email,
         @Nonnull String password
 ) {
