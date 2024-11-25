@@ -1,7 +1,6 @@
 package com.project.musicplayer.dto.user;
 
-public record FriendsPreviewDTO(
-        String id,
+public record UserProfileChangeDTO(
         String name,
         String profileUrl
 ) {

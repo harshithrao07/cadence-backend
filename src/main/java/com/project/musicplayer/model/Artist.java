@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,7 +33,7 @@ public class Artist {
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    private Set<Song> createdSongs;
+    private Set<Song> createdSongs = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
@@ -40,8 +41,8 @@ public class Artist {
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "album_id", referencedColumnName = "id")
     )
-    private Set<Album> createdAlbums;
+    private Set<Album> createdAlbums = new HashSet<>();
 
     @ManyToMany(mappedBy = "artistFollowing")
-    private Set<User> userFollowers;
+    private Set<User> userFollowers = new HashSet<>();
 }

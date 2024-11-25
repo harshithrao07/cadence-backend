@@ -38,7 +38,7 @@ public class User {
 
     @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private Set<Playlist> playlists;
+    private Set<Playlist> playlists = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(
@@ -46,7 +46,7 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    private Set<Song> likedSongs;
+    private Set<Song> likedSongs = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(
@@ -54,7 +54,7 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id")
     )
-    private Set<Playlist> likedPlaylists;
+    private Set<Playlist> likedPlaylists = new HashSet<>();
 
     @ManyToMany
     @JoinTable(
@@ -62,7 +62,7 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id")
     )
-    private Set<Genre> genrePreferences;
+    private Set<Genre> genrePreferences = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(
@@ -70,10 +70,10 @@ public class User {
             joinColumns = @JoinColumn(name = "follower_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "following_id", referencedColumnName = "id")
     )
-    private Set<User> userFollowing;
+    private Set<User> userFollowing = new HashSet<>();
 
     @ManyToMany(mappedBy = "userFollowing")
-    private Set<User> userFollowers;
+    private Set<User> userFollowers = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(
@@ -81,5 +81,5 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id")
     )
-    private Set<Artist> artistFollowing;
+    private Set<Artist> artistFollowing = new HashSet<>();
 }

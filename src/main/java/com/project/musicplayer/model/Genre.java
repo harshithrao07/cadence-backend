@@ -22,8 +22,8 @@ public class Genre {
     private String type;
 
     @ManyToMany(mappedBy = "genres")
-    private Set<Song> songs;
+    private Set<Song> songs = new HashSet<>();
 
     @ManyToMany(mappedBy = "genrePreferences")
-    private Set<User> users;
+    private Set<User> users = new HashSet<>();
 }

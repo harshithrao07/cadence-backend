@@ -3,6 +3,7 @@ package com.project.musicplayer.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,8 +36,8 @@ public class Playlist {
             joinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    private Set<Song> songs;
+    private Set<Song> songs = new HashSet<>();
 
     @ManyToMany(mappedBy = "likedPlaylists")
-    private Set<User> users;
+    private Set<User> users = new HashSet<>();
 }

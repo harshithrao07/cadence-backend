@@ -27,8 +27,8 @@ public class Album {
 
     @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinColumn(name = "album_id", referencedColumnName = "id")
-    private Set<Song> songs;
+    private Set<Song> songs = new HashSet<>();
 
     @ManyToMany(mappedBy = "createdAlbums")
-    private Set<Artist> artists;
+    private Set<Artist> artists = new HashSet<>();
 }
