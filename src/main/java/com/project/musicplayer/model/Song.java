@@ -30,11 +30,14 @@ public class Song {
     @Column(name = "cover_url")
     private String coverUrl;
 
-    @Column(name = "album_id")
-    private String albumId;
+    @Column(name = "release_id")
+    private String releaseId;
 
     @ManyToMany(mappedBy = "createdSongs")
     private Set<Artist> artists = new HashSet<>();
+
+    @ManyToMany(mappedBy = "featureSongs")
+    private Set<Artist> features = new HashSet<>();
 
     @ManyToMany(mappedBy = "likedSongs")
     private Set<User> likedBy = new HashSet<>();

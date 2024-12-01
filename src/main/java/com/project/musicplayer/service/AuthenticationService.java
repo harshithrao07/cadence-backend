@@ -1,5 +1,6 @@
 package com.project.musicplayer.service;
 
+import com.project.musicplayer.dto.ApiResponseDTO;
 import com.project.musicplayer.dto.auth.*;
 import com.project.musicplayer.model.Role;
 import com.project.musicplayer.model.User;
@@ -24,12 +25,12 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
-    public ResponseEntity<AuthenticationResponseDTO> register(@NotNull RegisterRequestDTO registerRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> register(@NotNull RegisterRequestDTO registerRequestDTO) {
         try {
             if (userRepository.existsByEmail(registerRequestDTO.email())) {
                 return ResponseEntity
                         .status(HttpStatus.CONFLICT)
-                        .body(new AuthenticationResponseDTO("", "", "", "A user with the given email already exists"));
+                        .body(new ApiResponseDTO<>(false, "A user with the given email already exists", null));
             }
 
             User user = User.builder()
@@ -41,39 +42,39 @@ public class AuthenticationService {
 
             User savedUser = userRepository.save(user);
             if (savedUser.getId() == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred while creating the user"));
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the user", null));
             }
 
             String accessToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.access);
             String refreshToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(savedUser.getId().toString(), accessToken, refreshToken, "User registered successfully"));
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "User registered successfully", new AuthenticationResponseDTO(savedUser.getId(), accessToken, refreshToken)));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred in the server"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<AuthenticationResponseDTO> authenticate(AuthenticateRequestDTO authenticateRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> authenticate(AuthenticateRequestDTO authenticateRequestDTO) {
         try {
             Optional<User> user = userRepository.findByEmail(authenticateRequestDTO.email());
             if (user.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "", "User does not exist"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "User does not exist", null));
             }
 
             if (!passwordEncoder.matches(authenticateRequestDTO.password(), user.get().getPassword())) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AuthenticationResponseDTO("", "", "", "Password does not match"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Password does not match", null));
             }
 
             String accessToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.access);
             String refreshToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new AuthenticationResponseDTO(user.get().getId().toString(), accessToken, refreshToken, "User authenticated successfully"));
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "User authenticated successfully", new AuthenticationResponseDTO(user.get().getId(), accessToken, refreshToken)));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthenticationResponseDTO("", "", "", "An error occurred in the server"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<AccessTokenResponseDTO> refreshToken(RefreshTokenRequestDTO refreshTokenRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> refreshToken(RefreshTokenRequestDTO refreshTokenRequestDTO) {
         try {
             String[] sections = refreshTokenRequestDTO.refreshToken().split("\\.");
 
@@ -84,31 +85,31 @@ public class AuthenticationService {
 
             String expectedSignature = jwtService.generateSignature(header, payload);
             if (!tokenSignature.equals(expectedSignature)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AccessTokenResponseDTO("", "Token integrity verification failed"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Token integrity verification failed", null));
             }
 
             String userEmail = jwtService.extractEmailForPayload(payload);
             if (userEmail == null || userEmail.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AccessTokenResponseDTO("", "Unable to extract user email from token"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Unable to extract user email from token", null));
             }
 
             Role role;
             try {
                 role = Role.valueOf(jwtService.extractRoleForPayload(payload));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new AccessTokenResponseDTO("", "Unable to extract the user role from token"));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Unable to extract the user role from token", null));
             }
 
             if (jwtService.isTokenExpired(payload)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new AccessTokenResponseDTO("", "Refresh token has expired"));
+                        .body(new ApiResponseDTO<>(false, "Refresh token has expired", null));
             }
 
             String accessToken = jwtService.generateJwtToken(userEmail, role, TokenType.access);
-            return ResponseEntity.status(HttpStatus.OK).body(new AccessTokenResponseDTO(accessToken, "New Access Token successfully generated"));
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "New Access Token successfully generated", accessToken));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AccessTokenResponseDTO("", "An error occurred in the server"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 }

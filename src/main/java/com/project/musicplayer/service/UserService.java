@@ -1,11 +1,11 @@
 package com.project.musicplayer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.musicplayer.dto.ApiResponseDTO;
 import com.project.musicplayer.dto.artist.ArtistPreviewDTO;
 import com.project.musicplayer.dto.genre.GenrePreviewDTO;
 import com.project.musicplayer.dto.playlist.PlaylistPreviewDTO;
 import com.project.musicplayer.dto.song.TrackPreviewDTO;
-import com.project.musicplayer.dto.user.UserIsFollowingDTO;
 import com.project.musicplayer.dto.user.UserProfileChangeDTO;
 import com.project.musicplayer.dto.user.UserProfileDTO;
 import com.project.musicplayer.dto.user.UserPreviewDTO;
@@ -35,30 +35,19 @@ public class UserService {
         return this.userRepository.findByEmail(email);
     }
 
-    public ResponseEntity<String> logOut(@NotNull String token) {
-        try {
-            String[] sections = token.split("\\.");
-
-            Base64.Decoder decoder = Base64.getUrlDecoder();
-            String payload = new String(decoder.decode(sections[1]));
-
-            String userEmail = jwtService.extractEmailForPayload(payload);
-            InvalidatedToken invalidatedToken = jwtService.invalidateAllUserTokens(userEmail);
-            if (invalidatedToken == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while logging out");
-            }
-            return ResponseEntity.status(HttpStatus.OK).body("Logged out successfully");
-        } catch (Exception e) {
-            log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
-        }
+    private boolean authenticatedUserMatchesProfileLookup(String tokenEmail, String userId) {
+        Optional<User> user = userRepository.findById(userId);
+        return user.isPresent() && user.get().getEmail().equals(tokenEmail);
     }
 
-    public ResponseEntity<UserProfileDTO> getUserProfile(String userId, boolean matches) {
+    public ResponseEntity<ApiResponseDTO<UserProfileDTO>> getUserProfile(String userId, String tokenEmail) {
         try {
+            // Whether the token email matches with the requested profile's email
+            boolean matches = authenticatedUserMatchesProfileLookup(tokenEmail, userId);
+
             Optional<User> user = userRepository.findById(userId);
             if (user.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             Set<GenrePreviewDTO> genrePreviewDTOS = new HashSet<>();
@@ -95,7 +84,7 @@ public class UserService {
                     likedSongsPreviewDTOs.add(objectMapper.convertValue(song, TrackPreviewDTO.class));
                     count++;
 
-                    if (count > 10) {
+                    if (count > 5) {
                         break;
                     }
                 }
@@ -133,119 +122,133 @@ public class UserService {
                     artistFollowingPreviewDTOs
             );
 
-            return ResponseEntity.status(HttpStatus.OK).body(userProfileDTO);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved user profile", userProfileDTO));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public boolean authenticatedUserMatchesProfileLookup(String tokenEmail, String userId) {
-        Optional<User> user = userRepository.findById(userId);
-        return user.isPresent() && user.get().getEmail().equals(tokenEmail);
-    }
-
-    public ResponseEntity<String> putUserProfile(String userId, UserProfileChangeDTO userProfileChangeDTO) {
+    public ResponseEntity<ApiResponseDTO<Void>> putUserProfile(String userId, UserProfileChangeDTO userProfileChangeDTO, String tokenEmail) {
         try {
+            // Whether the token email matches with the requested profile's email if not then unauthorized
+            if (!authenticatedUserMatchesProfileLookup(tokenEmail, userId)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Not authorized to edit profile", null));
+            }
+
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("An error occurred: requesting user not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
             objectMapper.updateValue(user, userProfileChangeDTO);
             userRepository.save(user);
-            return ResponseEntity.status(HttpStatus.OK).body("User profile updated successfully");
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "User profile updated successfully", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<String> followUser(String userId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Void>> followUser(String userId, String tokenEmail) {
         try {
+            // Prevents the user from following themselves
+            if (authenticatedUserMatchesProfileLookup(tokenEmail, userId)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You cannot follow yourself", null));
+            }
+
             // Find the user making the request
             User requestingUser = userRepository.findByEmail(tokenEmail).orElse(null);
             if (requestingUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("An error occurred: requesting user not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
             // Check if the target user exists
             User targetUser = userRepository.findById(userId).orElse(null);
             if (targetUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             if (requestingUser.getUserFollowing().contains(targetUser)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You are already following this user");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You are already following this user", null));
             }
 
             requestingUser.getUserFollowing().add(targetUser);
             userRepository.save(requestingUser);
 
-            return ResponseEntity.status(HttpStatus.OK).body("Successfully followed the user");
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully followed the user", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<String> unfollowUser(String userId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Void>> unfollowUser(String userId, String tokenEmail) {
         try {
+            // Prevents the user from unfollowing themselves
+            if (authenticatedUserMatchesProfileLookup(tokenEmail, userId)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You cannot unfollow yourself", null));
+            }
+
             // Find the user making the request
             User requestingUser = userRepository.findByEmail(tokenEmail).orElse(null);
             if (requestingUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("An error occurred: requesting user not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
             // Check if the target user exists
             User targetUser = userRepository.findById(userId).orElse(null);
             if (targetUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             if (!requestingUser.getUserFollowing().contains(targetUser)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You are not following this user");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You are not following this user", null));
             }
 
             requestingUser.getUserFollowing().remove(targetUser);
             userRepository.save(requestingUser);
 
-            return ResponseEntity.status(HttpStatus.OK).body("Successfully unfollowed the user");
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully unfollowed the user", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<UserIsFollowingDTO> isFollowing(String userId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Boolean>> isFollowing(String userId, String tokenEmail) {
         try {
+            if (authenticatedUserMatchesProfileLookup(tokenEmail, userId)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You cannot check whether you are following yourself", null));
+            }
+
             // Find the user making the request
             User requestingUser = userRepository.findByEmail(tokenEmail).orElse(null);
             if (requestingUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Requesting user not found", null));
             }
 
             // Check if the target user exists
             User targetUser = userRepository.findById(userId).orElse(null);
             if (targetUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             if (requestingUser.getUserFollowing().contains(targetUser)) {
-                return ResponseEntity.status(HttpStatus.OK).body(new UserIsFollowingDTO(true));
+                return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "You are following this user", true));
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(new UserIsFollowingDTO(false));
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "You are not following this user", false));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<Set<UserPreviewDTO>> getUserFollowers(String userId) {
+    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getUserFollowers(String userId) {
         try {
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             Set<UserPreviewDTO> userPreviewDTOS = new HashSet<>();
@@ -254,18 +257,18 @@ public class UserService {
                 userPreviewDTOS.add(objectMapper.convertValue(userFollower, UserPreviewDTO.class));
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(userPreviewDTOS);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved user followers", userPreviewDTOS));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<Set<UserPreviewDTO>> getUserFollowing(String userId) {
+    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getUserFollowing(String userId) {
         try {
             User user = userRepository.findById(userId).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "User not found", null));
             }
 
             Set<UserPreviewDTO> userPreviewDTOS = new HashSet<>();
@@ -274,10 +277,29 @@ public class UserService {
                 userPreviewDTOS.add(objectMapper.convertValue(userFollowing, UserPreviewDTO.class));
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(userPreviewDTOS);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved user following", userPreviewDTOS));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<Void>> logOut(@NotNull String token) {
+        try {
+            String[] sections = token.split("\\.");
+
+            Base64.Decoder decoder = Base64.getUrlDecoder();
+            String payload = new String(decoder.decode(sections[1]));
+
+            String userEmail = jwtService.extractEmailForPayload(payload);
+            InvalidatedToken invalidatedToken = jwtService.invalidateAllUserTokens(userEmail);
+            if (invalidatedToken == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while logging out", null));
+            }
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Logged out successfully", null));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 }

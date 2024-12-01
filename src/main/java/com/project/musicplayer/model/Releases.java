@@ -10,8 +10,8 @@ import java.util.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "album")
-public class Album {
+@Table(name = "releases")
+public class Releases {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
@@ -19,16 +19,19 @@ public class Album {
     @Column(nullable = false)
     private String title;
 
-    @Column(name = "release_year")
-    private int releaseYear;
+    @Column(name = "release_timestamp")
+    private long releaseTimestamp;
 
     @Column(name = "cover_url")
     private String coverUrl;
 
+    @Enumerated(EnumType.STRING)
+    private ReleaseType releaseType;
+
     @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
-    @JoinColumn(name = "album_id", referencedColumnName = "id")
+    @JoinColumn(name = "release_id", referencedColumnName = "id")
     private Set<Song> songs = new HashSet<>();
 
-    @ManyToMany(mappedBy = "createdAlbums")
+    @ManyToMany(mappedBy = "artistReleases")
     private Set<Artist> artists = new HashSet<>();
 }

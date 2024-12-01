@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -21,11 +20,13 @@ public class Artist {
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name;
 
     @Column(name = "profile_url")
     private String profileUrl;
+
+    private String description;
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
@@ -37,11 +38,19 @@ public class Artist {
 
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
-            name = "artist_created_albums",
+            name = "artist_featured_songs",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "album_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    private Set<Album> createdAlbums = new HashSet<>();
+    private Set<Song> featureSongs = new HashSet<>();
+
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "artist_releases",
+            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "release_id", referencedColumnName = "id")
+    )
+    private Set<Releases> artistReleases = new HashSet<>();
 
     @ManyToMany(mappedBy = "artistFollowing")
     private Set<User> userFollowers = new HashSet<>();

@@ -101,7 +101,7 @@ public class JwtService {
         return null;
     }
 
-    public String getEmailFromHttpRequest(HttpServletRequest request) {
+    private @NotNull String getPayloadFromHttpRequest(@Nonnull HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -110,9 +110,25 @@ public class JwtService {
 
             // Decode the token to get the header and payload
             Base64.Decoder decoder = Base64.getUrlDecoder();
-            String payload = new String(decoder.decode(sections[1]));
+            return new String(decoder.decode(sections[1]));
+        }
+        return "";
+    }
+
+    public String getEmailFromHttpRequest(@NotNull HttpServletRequest request) {
+        String payload = getPayloadFromHttpRequest(request);
+        if (!payload.isEmpty()) {
             return extractEmailForPayload(payload);
         }
         return "";
+    }
+
+    public boolean checkIfAdminFromHttpRequest(@NotNull HttpServletRequest request) {
+        String payload = getPayloadFromHttpRequest(request);
+        if (!payload.isEmpty()) {
+            String role = extractRoleForPayload(payload);
+            return Role.valueOf(role).equals(Role.ADMIN);
+        }
+        return false;
     }
 }

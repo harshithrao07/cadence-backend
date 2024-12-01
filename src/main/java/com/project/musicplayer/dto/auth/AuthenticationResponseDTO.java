@@ -5,7 +5,6 @@ import jakarta.annotation.Nonnull;
 public record AuthenticationResponseDTO(
         @Nonnull String id,
         @Nonnull String accessToken,
-        @Nonnull String refreshToken,
-        String message
+        @Nonnull String refreshToken
 ) {
 }

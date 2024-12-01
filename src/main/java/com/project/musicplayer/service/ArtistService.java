@@ -1,10 +1,14 @@
 package com.project.musicplayer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.musicplayer.dto.artist.ArtistIsFollowingDTO;
+import com.project.musicplayer.dto.ApiResponseDTO;
+import com.project.musicplayer.dto.artist.ArtistProfileDTO;
+import com.project.musicplayer.dto.artist.NewArtistDTO;
+import com.project.musicplayer.dto.genre.GenrePreviewDTO;
+import com.project.musicplayer.dto.releases.ReleasesPreviewDTO;
+import com.project.musicplayer.dto.song.TrackPreviewDTO;
 import com.project.musicplayer.dto.user.UserPreviewDTO;
-import com.project.musicplayer.model.Artist;
-import com.project.musicplayer.model.User;
+import com.project.musicplayer.model.*;
 import com.project.musicplayer.repository.ArtistRepository;
 import com.project.musicplayer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,89 +28,201 @@ public class ArtistService {
     private final ArtistRepository artistRepository;
     ObjectMapper objectMapper = new ObjectMapper();
 
-    public ResponseEntity<String> followArtist(String artistId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<ArtistProfileDTO>> getArtistProfile(String artistId) {
+        try {
+            Artist artist = artistRepository.findById(artistId).orElse(null);
+            if (artist == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
+            }
+
+            Set<TrackPreviewDTO> trackPreviewDTOS = new HashSet<>();
+            Set<ReleasesPreviewDTO> releasesPreviewDTOS = new HashSet<>();
+
+            Set<Releases> artistReleases = artist.getArtistReleases();
+
+            // Fetch the 5 most recent releases
+            Set<Releases> recentReleases = artistReleases.stream()
+                    .sorted(Comparator.comparing(Releases::getReleaseTimestamp).reversed())
+                    .limit(5)
+                    .collect(Collectors.toSet());
+
+            // Fetch 5 songs from the most recent releases
+            Set<Song> recentCreatedSongs = recentReleases.stream()
+                    .flatMap(release -> release.getSongs().stream().limit(5))
+                    .collect(Collectors.toSet());
+
+            recentCreatedSongs.forEach(song -> trackPreviewDTOS.add(objectMapper.convertValue(song, TrackPreviewDTO.class)));
+            recentReleases.forEach(release -> releasesPreviewDTOS.add(objectMapper.convertValue(release, ReleasesPreviewDTO.class)));
+
+            Set<Song> createdSongs = artist.getCreatedSongs();
+
+            Map<GenrePreviewDTO, Long> genreUsedPreviewDTO = new HashMap<>();
+            Set<ArtistProfileDTO> relatedArtistsProfileDTOs = new HashSet<>();
+            if (!createdSongs.isEmpty()) {
+                // Map of genre most used by the artist
+                Map<Genre, Long> genreUsed = createdSongs.stream()
+                        .flatMap(song -> song.getGenres().stream())
+                        .collect(Collectors.groupingBy(genre -> genre, Collectors.counting()));
+
+                genreUsedPreviewDTO = genreUsed.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                entry -> new GenrePreviewDTO(entry.getKey().getId(), entry.getKey().getType()),
+                                Map.Entry::getValue
+                        ));
+
+                // Set of genre most used by the artist
+                Long maxUsed = genreUsed.values().stream().max(Long::compare).orElse(0L);
+                Set<Genre> mostUsedGenre = genreUsed.entrySet()
+                        .stream()
+                        .filter(entry -> Objects.equals(entry.getValue(), maxUsed))
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
+
+                // Get 5 related artists
+                Set<Artist> relatedArtists = mostUsedGenre.stream()
+                        .flatMap(genre -> genre.getSongs()
+                                .stream()
+                                .flatMap(song -> song.getArtists().stream()))
+                        .limit(5)
+                        .collect(Collectors.toSet());
+
+                relatedArtists.forEach(relatedArtist -> relatedArtistsProfileDTOs.add(objectMapper.convertValue(relatedArtist, ArtistProfileDTO.class)));
+            }
+
+            Set<ReleasesPreviewDTO> featureReleasesPreviewDTOs = new HashSet<>();
+            Set<Releases> featureReleases = artistRepository.findFeatureReleasesByArtistId(artistId);
+            featureReleases.forEach(releases -> featureReleasesPreviewDTOs.add(objectMapper.convertValue(releases, ReleasesPreviewDTO.class)));
+
+            return ResponseEntity.status(HttpStatus.OK).body(
+                    new ApiResponseDTO<>(
+                            true,
+                            "Successfully retrieved the artist profile",
+                            new ArtistProfileDTO(
+                                    artist.getId(),
+                                    artist.getName(),
+                                    artist.getProfileUrl(),
+                                    artist.getDescription(),
+                                    trackPreviewDTOS,
+                                    releasesPreviewDTOS,
+                                    relatedArtistsProfileDTOs,
+                                    featureReleasesPreviewDTOs,
+                                    genreUsedPreviewDTO
+                            )
+                    )
+            );
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<String>> addNewArtist(NewArtistDTO newArtistDTO) {
+        try {
+            if (artistRepository.existsByName(newArtistDTO.name())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist already exists", null));
+            }
+
+            Artist artist = Artist.builder()
+                    .name(newArtistDTO.name())
+                    .profileUrl(newArtistDTO.profileUrl())
+                    .description(newArtistDTO.description())
+                    .build();
+
+            Artist savedArtist = artistRepository.save(artist);
+            if (savedArtist.getId() == null) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the artist", null));
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Artist created successfully", artist.getId()));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<Void>> followArtist(String artistId, String tokenEmail) {
         try {
             User user = userRepository.findByEmail(tokenEmail).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("An error occurred: requesting user not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
             Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Artist not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
             if (user.getArtistFollowing().contains(artist)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You are already following this artist");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You are already following this artist", null));
             }
 
             user.getArtistFollowing().add(artist);
-            return ResponseEntity.status(HttpStatus.OK).body("Successfully followed the artist");
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully followed the artist", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<String> unfollowArtist(String artistId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Void>> unfollowArtist(String artistId, String tokenEmail) {
         try {
             User user = userRepository.findByEmail(tokenEmail).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("An error occurred: requesting user not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
             Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Artist not found");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
             if (!user.getArtistFollowing().contains(artist)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("You are not following this artist");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "You are not following this artist", null));
             }
 
             user.getArtistFollowing().remove(artist);
-            return ResponseEntity.status(HttpStatus.OK).body("Successfully unfollowed the artist");
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully unfollowed the artist", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred in the server");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<ArtistIsFollowingDTO> isFollowing(String artistId, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Boolean>> isFollowing(String artistId, String tokenEmail) {
         try {
             // Find the user making the request
             User user = userRepository.findByEmail(tokenEmail).orElse(null);
             if (user == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
             // Check if the target user exists
             Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
             if (user.getArtistFollowing().contains(artist)) {
-                return ResponseEntity.status(HttpStatus.OK).body(new ArtistIsFollowingDTO(true));
+                return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "You are following this artist", true));
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(new ArtistIsFollowingDTO(false));
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "You are not following this artist", false));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
-    public ResponseEntity<Set<UserPreviewDTO>> getArtistFollowers(String artistid, String tokenEmail) {
+    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getArtistFollowers(String artistId, String tokenEmail) {
         try {
             User currentUser = userRepository.findByEmail(tokenEmail).orElse(null);
             if (currentUser == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "An error occurred: requesting user not found", null));
             }
 
-            Artist artist = artistRepository.findById(artistid).orElse(null);
+            Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
             Set<UserPreviewDTO> userPreviewDTOS = new HashSet<>();
@@ -117,7 +233,7 @@ public class ArtistService {
                 }
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(userPreviewDTOS);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved artist followers", userPreviewDTOS));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);

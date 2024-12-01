@@ -1,5 +1,6 @@
 package com.project.musicplayer.controller;
 
+import com.project.musicplayer.dto.ApiResponseDTO;
 import com.project.musicplayer.dto.auth.*;
 import com.project.musicplayer.service.AuthenticationService;
 import lombok.RequiredArgsConstructor;
@@ -16,17 +17,17 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/register")
-    public ResponseEntity<AuthenticationResponseDTO> register(@RequestBody RegisterRequestDTO registerRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> register(@RequestBody RegisterRequestDTO registerRequestDTO) {
         return authenticationService.register(registerRequestDTO);
     }
 
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponseDTO> authenticate(@RequestBody AuthenticateRequestDTO authenticateRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> authenticate(@RequestBody AuthenticateRequestDTO authenticateRequestDTO) {
         return authenticationService.authenticate(authenticateRequestDTO);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AccessTokenResponseDTO> refreshToken(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> refreshToken(@RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
         return authenticationService.refreshToken(refreshTokenRequestDTO);
     }
 }
