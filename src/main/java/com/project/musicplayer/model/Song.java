@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Data
@@ -32,12 +31,6 @@ public class Song {
 
     @Column(name = "release_id")
     private String releaseId;
-
-    @ManyToMany(mappedBy = "createdSongs")
-    private Set<Artist> artists = new HashSet<>();
-
-    @ManyToMany(mappedBy = "featureSongs")
-    private Set<Artist> features = new HashSet<>();
 
     @ManyToMany(mappedBy = "likedSongs")
     private Set<User> likedBy = new HashSet<>();

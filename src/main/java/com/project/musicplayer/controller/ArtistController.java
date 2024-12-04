@@ -1,8 +1,10 @@
 package com.project.musicplayer.controller;
 
 import com.project.musicplayer.dto.ApiResponseDTO;
+import com.project.musicplayer.dto.artist.ArtistPreviewDTO;
 import com.project.musicplayer.dto.artist.ArtistProfileDTO;
 import com.project.musicplayer.dto.artist.NewArtistDTO;
+import com.project.musicplayer.dto.artist.UpdateArtistDTO;
 import com.project.musicplayer.dto.user.UserPreviewDTO;
 import com.project.musicplayer.service.ArtistService;
 import com.project.musicplayer.service.JwtService;
@@ -21,17 +23,39 @@ public class ArtistController {
     private final JwtService jwtService;
     private final ArtistService artistService;
 
-    @GetMapping(path = "/{artistId}")
-    public ResponseEntity<ApiResponseDTO<ArtistProfileDTO>> getArtistProfile(@PathVariable("artistId") String artistId) {
-        return artistService.getArtistProfile(artistId);
-    }
-
-    @PostMapping(path = "/add")
+    @PostMapping(path = "/admin/add")
     public ResponseEntity<ApiResponseDTO<String>> addNewArtist(HttpServletRequest request, @RequestBody NewArtistDTO newArtistDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.addNewArtist(newArtistDTO);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    }
+
+    @PutMapping(path = "/admin/update/{artistId}")
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(HttpServletRequest request, @RequestBody UpdateArtistDTO updateArtistDTO, @PathVariable("artistId") String artistId) {
+        if (jwtService.checkIfAdminFromHttpRequest(request)) {
+            return artistService.updateExistingArtist(updateArtistDTO, artistId);
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    }
+
+
+    @DeleteMapping(path = "/admin/delete/{artistId}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
+        if (jwtService.checkIfAdminFromHttpRequest(request)) {
+            return artistService.deleteExistingArtist(artistId);
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    }
+
+    @GetMapping(path = "/all")
+    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists() {
+        return artistService.getAllArtists();
+    }
+
+    @GetMapping(path = "/{artistId}")
+    public ResponseEntity<ApiResponseDTO<ArtistProfileDTO>> getArtistProfile(@PathVariable("artistId") String artistId) {
+        return artistService.getArtistProfile(artistId);
     }
 
     @PostMapping(path = "/{artistId}/follow")
@@ -57,4 +81,5 @@ public class ArtistController {
         String tokenEmail = jwtService.getEmailFromHttpRequest(request);
         return artistService.getArtistFollowers(artistId, tokenEmail);
     }
+
 }

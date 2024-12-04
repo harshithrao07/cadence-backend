@@ -2,8 +2,10 @@ package com.project.musicplayer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.musicplayer.dto.ApiResponseDTO;
+import com.project.musicplayer.dto.artist.ArtistPreviewDTO;
 import com.project.musicplayer.dto.artist.ArtistProfileDTO;
 import com.project.musicplayer.dto.artist.NewArtistDTO;
+import com.project.musicplayer.dto.artist.UpdateArtistDTO;
 import com.project.musicplayer.dto.genre.GenrePreviewDTO;
 import com.project.musicplayer.dto.releases.ReleasesPreviewDTO;
 import com.project.musicplayer.dto.song.TrackPreviewDTO;
@@ -122,6 +124,10 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist already exists", null));
             }
 
+            if (newArtistDTO.name().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist name cannot be empty", null));
+            }
+
             Artist artist = Artist.builder()
                     .name(newArtistDTO.name())
                     .profileUrl(newArtistDTO.profileUrl())
@@ -234,6 +240,58 @@ public class ArtistService {
             }
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved artist followers", userPreviewDTOS));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists() {
+        try {
+            Set<Artist> artists = (Set<Artist>) artistRepository.findAll();
+
+            Set<ArtistPreviewDTO> artistPreviewDTOS = new HashSet<>();
+            artists.forEach(artist -> artistPreviewDTOS.add(objectMapper.convertValue(artist, ArtistPreviewDTO.class)));
+
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all artists", artistPreviewDTOS));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(UpdateArtistDTO updateArtistDTO, String artistId) {
+        try {
+            Artist artist = artistRepository.findById(artistId).orElse(null);
+            if (artist == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
+            }
+
+            if (!updateArtistDTO.name().isEmpty()) {
+                artist.setName(updateArtistDTO.name());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist name cannot be empty", null));
+            }
+
+            artist.setProfileUrl(updateArtistDTO.profileUrl());
+            artist.setDescription(updateArtistDTO.description());
+
+            Artist updatedArtist = artistRepository.save(artist);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully updated artist", updatedArtist.getId()));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(String artistId) {
+        try {
+            if (!artistRepository.existsById(artistId)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
+            }
+
+            artistRepository.deleteById(artistId);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully deleted artist", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);

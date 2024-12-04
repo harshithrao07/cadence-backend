@@ -28,10 +28,15 @@ public class Releases {
     @Enumerated(EnumType.STRING)
     private ReleaseType releaseType;
 
-    @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "release_id", referencedColumnName = "id")
     private Set<Song> songs = new HashSet<>();
 
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "artistReleases")
     private Set<Artist> artists = new HashSet<>();
+
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(mappedBy = "featureReleases")
+    private Set<Artist> features = new HashSet<>();
 }

@@ -1,10 +1,7 @@
 package com.project.musicplayer.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -28,22 +25,7 @@ public class Artist {
 
     private String description;
 
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "artist_created_songs",
-            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
-    )
-    private Set<Song> createdSongs = new HashSet<>();
-
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "artist_featured_songs",
-            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
-    )
-    private Set<Song> featureSongs = new HashSet<>();
-
+    @EqualsAndHashCode.Exclude
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
             name = "artist_releases",
@@ -51,6 +33,15 @@ public class Artist {
             inverseJoinColumns = @JoinColumn(name = "release_id", referencedColumnName = "id")
     )
     private Set<Releases> artistReleases = new HashSet<>();
+
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "artist_feature_releases",
+            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "release_id", referencedColumnName = "id")
+    )
+    private Set<Releases> featureReleases = new HashSet<>();
 
     @ManyToMany(mappedBy = "artistFollowing")
     private Set<User> userFollowers = new HashSet<>();
