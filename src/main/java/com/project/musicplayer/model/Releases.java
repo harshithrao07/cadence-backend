@@ -26,6 +26,7 @@ public class Releases {
     private String coverUrl;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "release_type")
     private ReleaseType releaseType;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)

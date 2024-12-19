@@ -47,11 +47,11 @@ public class ReleaseController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponseDTO<ReleasesPreviewDTO>> getAllReleases(
-            @RequestParam(required = false) String artistId,
+    public ResponseEntity<ApiResponseDTO<Set<ReleasesPreviewDTO>>> getAllReleasesByArtistId(
+            @RequestParam String artistId,
             @RequestParam(required = false) ReleaseType releaseType
             ) {
-        return releaseService.getAllReleases(artistId, releaseType);
+        return releaseService.getAllReleasesByArtistId(artistId, releaseType);
     }
 
 }

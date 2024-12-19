@@ -16,7 +16,7 @@ import java.util.Set;
 @RequestMapping("/api/v1/song")
 public class SongController {
 
-    @PostMapping("/add")
-    public ResponseEntity<ApiResponseDTO<Set<String>> addNewSongs(HttpServletRequest request, NewSongDTO)
+//    @PostMapping("/add")
+//    public ResponseEntity<ApiResponseDTO<Set<String>> addNewSongs(HttpServletRequest request, NewSongDTO)
 
 }

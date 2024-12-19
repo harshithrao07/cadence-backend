@@ -10,12 +10,15 @@ import com.project.musicplayer.service.ArtistService;
 import com.project.musicplayer.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
 
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/artist")
@@ -24,7 +27,7 @@ public class ArtistController {
     private final ArtistService artistService;
 
     @PostMapping(path = "/admin/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewArtist(HttpServletRequest request, @RequestBody NewArtistDTO newArtistDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> addNewArtist(HttpServletRequest request, @Validated @RequestBody NewArtistDTO newArtistDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.addNewArtist(newArtistDTO);
         }
@@ -32,7 +35,7 @@ public class ArtistController {
     }
 
     @PutMapping(path = "/admin/update/{artistId}")
-    public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(HttpServletRequest request, @RequestBody UpdateArtistDTO updateArtistDTO, @PathVariable("artistId") String artistId) {
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(HttpServletRequest request, @Validated @RequestBody UpdateArtistDTO updateArtistDTO, @PathVariable("artistId") String artistId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.updateExistingArtist(updateArtistDTO, artistId);
         }
@@ -49,8 +52,8 @@ public class ArtistController {
     }
 
     @GetMapping(path = "/all")
-    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists() {
-        return artistService.getAllArtists();
+    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size) {
+        return artistService.getAllArtists(page, size);
     }
 
     @GetMapping(path = "/{artistId}")

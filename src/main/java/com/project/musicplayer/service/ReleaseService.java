@@ -1,5 +1,6 @@
 package com.project.musicplayer.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.musicplayer.dto.ApiResponseDTO;
 import com.project.musicplayer.dto.releases.NewReleaseDTO;
 import com.project.musicplayer.dto.releases.ReleasesPreviewDTO;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 public class ReleaseService {
     private final ReleaseRepository releaseRepository;
     private final ArtistRepository artistRepository;
+    ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<ApiResponseDTO<String>> addNewRelease(NewReleaseDTO newReleaseDTO) {
         try {
@@ -71,7 +72,7 @@ public class ReleaseService {
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Saved release type successfully", savedRelease.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
@@ -132,7 +133,7 @@ public class ReleaseService {
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Saved release type successfully", updatedRelease.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
@@ -146,16 +147,24 @@ public class ReleaseService {
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully deleted release", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<ReleasesPreviewDTO>> getAllReleases(String artistId, ReleaseType releaseType) {
+    public ResponseEntity<ApiResponseDTO<Set<ReleasesPreviewDTO>>> getAllReleasesByArtistId(String artistId, ReleaseType releaseType) {
         try {
+            if (artistId == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist not given in the payload", null));
+            }
 
+            Set<Releases> releases = releaseRepository.findArtistReleasesByArtistId(artistId, releaseType);
+            Set<ReleasesPreviewDTO> releasesPreviewDTOS = new HashSet<>();
+            releases.forEach(release -> releasesPreviewDTOS.add(objectMapper.convertValue(release, ReleasesPreviewDTO.class)));
+
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved releases", releasesPreviewDTOS));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 }
