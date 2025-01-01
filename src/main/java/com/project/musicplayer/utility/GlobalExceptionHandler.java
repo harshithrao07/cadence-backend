@@ -1,7 +1,8 @@
 package com.project.musicplayer.utility;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.project.musicplayer.dto.ApiResponseDTO;
-import org.apache.catalina.connector.ClientAbortException;
+import com.project.musicplayer.model.RecordType;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,40 +11,19 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-    private final ErrorMapper errorMapper;
 
-    public GlobalExceptionHandler(
-            ErrorMapper errorMapper
-    ) {
-        this.errorMapper = errorMapper;
+    @ExceptionHandler(InvalidFormatException.class)
+    public ResponseEntity<ApiResponseDTO<Void>> handleInvalidFormatException(InvalidFormatException ex) {
+        String message = "Invalid value for record type. Accepted values are: "
+                + String.join(", ", Arrays.toString(RecordType.values()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, message, null));
     }
-
-    @ExceptionHandler(Throwable.class)
-    public ResponseEntity<ApiResponseDTO<Object>> handleThrowable(Throwable e) {
-        // Handle socket closure scenario
-        if (e instanceof ClientAbortException) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ApiResponseDTO<>(false, "Client connection was aborted.", null));
-        }
-
-        // Handle general Throwable
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponseDTO<>(false, "An unexpected error occurred.", this.errorMapper.createErrorMap(e)));
-    }
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponseDTO<Object>> handleRuntimeException(RuntimeException e) {
-        // Specifically handle runtime exceptions
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ApiResponseDTO<>(false, "An unexpected error occurred.", this.errorMapper.createErrorMap(e)));
-    }
-
-
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponseDTO<Object>> handleMethodArgumentNotValidException(@NotNull MethodArgumentNotValidException e) {
@@ -61,7 +41,7 @@ public class GlobalExceptionHandler {
         });
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponseDTO<>(false, "Validation failed", errorMap));
+                .body(new ApiResponseDTO<>(false, errorMap.toString(), null));
     }
 
 }

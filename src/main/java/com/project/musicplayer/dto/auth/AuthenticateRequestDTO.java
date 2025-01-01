@@ -1,9 +1,9 @@
 package com.project.musicplayer.dto.auth;
 
-import jakarta.annotation.Nonnull;
+import jakarta.validation.constraints.NotBlank;
 
 public record AuthenticateRequestDTO(
-        @Nonnull String email,
-        @Nonnull String password
+        @NotBlank(message = "Email cannot be blank") String email,
+        @NotBlank(message = "Password cannot be blank") String password
 ) {
 }

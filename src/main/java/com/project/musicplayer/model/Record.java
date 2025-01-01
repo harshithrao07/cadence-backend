@@ -1,5 +1,6 @@
 package com.project.musicplayer.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,8 +11,8 @@ import java.util.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "releases")
-public class Releases {
+@Table(name = "record")
+public class Record {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
@@ -26,18 +27,15 @@ public class Releases {
     private String coverUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "release_type")
-    private ReleaseType releaseType;
+    @Column(name = "record_type")
+    private RecordType recordType;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "release_id", referencedColumnName = "id")
+    @JoinColumn(name = "record_id", referencedColumnName = "id")
     private Set<Song> songs = new HashSet<>();
 
     @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "artistReleases")
+    @ManyToMany(mappedBy = "artistRecords")
+    @JsonManagedReference
     private Set<Artist> artists = new HashSet<>();
-
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "featureReleases")
-    private Set<Artist> features = new HashSet<>();
 }

@@ -36,7 +36,7 @@ public class User {
     @OneToOne(mappedBy = "user")
     private PlayHistory playHistory;
 
-    @OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private Set<Playlist> playlists = new HashSet<>();
 
@@ -55,14 +55,6 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id")
     )
     private Set<Playlist> likedPlaylists = new HashSet<>();
-
-    @ManyToMany
-    @JoinTable(
-            name = "genre_preferences",
-            joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id")
-    )
-    private Set<Genre> genrePreferences = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(

@@ -1,6 +1,6 @@
 package com.project.musicplayer.dto.song;
 
-import com.project.musicplayer.dto.releases.TrackReleaseInfoDTO;
+import com.project.musicplayer.dto.record.TrackRecordInfoDTO;
 import com.project.musicplayer.dto.artist.TrackArtistInfoDTO;
 
 import java.util.Set;
@@ -11,6 +11,6 @@ public record TrackPreviewDTO(
         int totalDuration,
         String coverUrl,
         Set<TrackArtistInfoDTO> trackArtistInfo,
-        TrackReleaseInfoDTO trackReleaseInfoDTO
+        TrackRecordInfoDTO trackRecordInfoDTO
 ) {
 }

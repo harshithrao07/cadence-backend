@@ -1,5 +1,6 @@
 package com.project.musicplayer.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,21 +29,32 @@ public class Artist {
     @EqualsAndHashCode.Exclude
     @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
-            name = "artist_releases",
+            name = "artist_records",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "release_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "record_id", referencedColumnName = "id")
     )
-    private Set<Releases> artistReleases = new HashSet<>();
+    @JsonBackReference
+    private Set<Record> artistRecords = new HashSet<>();
 
     @EqualsAndHashCode.Exclude
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
     @JoinTable(
-            name = "artist_feature_releases",
+            name = "artist_created_songs",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "release_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    private Set<Releases> featureReleases = new HashSet<>();
+    private Set<Song> artistSongs = new HashSet<>();
 
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "artist_featured_songs",
+            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
+    )
+    private Set<Song> featureSongs = new HashSet<>();
+
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "artistFollowing")
     private Set<User> userFollowers = new HashSet<>();
 }

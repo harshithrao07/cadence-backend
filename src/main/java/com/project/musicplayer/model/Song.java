@@ -29,8 +29,16 @@ public class Song {
     @Column(name = "cover_url")
     private String coverUrl;
 
-    @Column(name = "release_id")
-    private String releaseId;
+    @Column(name = "record_id")
+    private String recordId;
+
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(mappedBy = "artistSongs")
+    private Set<Artist> createdBy = new HashSet<>();
+
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(mappedBy = "featureSongs")
+    private Set<Artist> features = new HashSet<>();
 
     @ManyToMany(mappedBy = "likedSongs")
     private Set<User> likedBy = new HashSet<>();
@@ -38,7 +46,7 @@ public class Song {
     @ManyToMany(mappedBy = "songs")
     private Set<Playlist> playlists = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.MERGE, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinTable(
             name = "song_genre",
             joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),

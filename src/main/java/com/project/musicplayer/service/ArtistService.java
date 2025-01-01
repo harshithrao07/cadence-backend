@@ -6,13 +6,13 @@ import com.project.musicplayer.dto.artist.ArtistPreviewDTO;
 import com.project.musicplayer.dto.artist.ArtistProfileDTO;
 import com.project.musicplayer.dto.artist.NewArtistDTO;
 import com.project.musicplayer.dto.artist.UpdateArtistDTO;
-import com.project.musicplayer.dto.genre.GenrePreviewDTO;
-import com.project.musicplayer.dto.releases.ReleasesPreviewDTO;
+import com.project.musicplayer.dto.record.RecordPreviewDTO;
 import com.project.musicplayer.dto.song.TrackPreviewDTO;
 import com.project.musicplayer.dto.user.UserPreviewDTO;
 import com.project.musicplayer.model.*;
+import com.project.musicplayer.model.Record;
 import com.project.musicplayer.repository.ArtistRepository;
-import com.project.musicplayer.repository.ReleaseRepository;
+import com.project.musicplayer.repository.RecordRepository;
 import com.project.musicplayer.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.awt.print.Pageable;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -33,96 +32,58 @@ import java.util.stream.StreamSupport;
 public class ArtistService {
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
-    private final ReleaseRepository releaseRepository;
+    private final RecordRepository recordRepository;
     ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<ApiResponseDTO<ArtistProfileDTO>> getArtistProfile(String artistId) {
         try {
-//            Artist artist = artistRepository.findById(artistId).orElse(null);
-//            if (artist == null) {
-//                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
-//            }
-//
-//            Set<TrackPreviewDTO> trackPreviewDTOS = new HashSet<>();
-//            Set<ReleasesPreviewDTO> releasesPreviewDTOS = new HashSet<>();
-//
-//            Set<Releases> artistReleases = artist.getArtistReleases();
-//
-//            // Fetch the 5 most recent releases
-//            Set<Releases> recentReleases = artistReleases.stream()
-//                    .sorted(Comparator.comparing(Releases::getReleaseTimestamp).reversed())
-//                    .limit(5)
-//                    .collect(Collectors.toSet());
-//
-//            // Fetch 5 songs from the most recent releases
-//            Set<Song> recentCreatedSongs = recentReleases.stream()
-//                    .flatMap(release -> release.getSongs().stream().limit(5))
-//                    .collect(Collectors.toSet());
-//
-//            recentCreatedSongs.forEach(song -> trackPreviewDTOS.add(objectMapper.convertValue(song, TrackPreviewDTO.class)));
-//            recentReleases.forEach(release -> releasesPreviewDTOS.add(objectMapper.convertValue(release, ReleasesPreviewDTO.class)));
-//
-//            Set<Song> createdSongs = artist.getCreatedSongs();
-//
-//            Map<GenrePreviewDTO, Long> genreUsedPreviewDTO = new HashMap<>();
-//            Set<ArtistProfileDTO> relatedArtistsProfileDTOs = new HashSet<>();
-//            if (!createdSongs.isEmpty()) {
-//                // Map of genre most used by the artist
-//                Map<Genre, Long> genreUsed = createdSongs.stream()
-//                        .flatMap(song -> song.getGenres().stream())
-//                        .collect(Collectors.groupingBy(genre -> genre, Collectors.counting()));
-//
-//                genreUsedPreviewDTO = genreUsed.entrySet().stream()
-//                        .collect(Collectors.toMap(
-//                                entry -> new GenrePreviewDTO(entry.getKey().getId(), entry.getKey().getType()),
-//                                Map.Entry::getValue
-//                        ));
-//
-//                // Set of genre most used by the artist
-//                Long maxUsed = genreUsed.values().stream().max(Long::compare).orElse(0L);
-//                Set<Genre> mostUsedGenre = genreUsed.entrySet()
-//                        .stream()
-//                        .filter(entry -> Objects.equals(entry.getValue(), maxUsed))
-//                        .map(Map.Entry::getKey)
-//                        .collect(Collectors.toSet());
-//
-//                // Get 5 related artists
-//                Set<Artist> relatedArtists = mostUsedGenre.stream()
-//                        .flatMap(genre -> genre.getSongs()
-//                                .stream()
-//                                .flatMap(song -> song.getArtists().stream()))
-//                        .limit(5)
-//                        .collect(Collectors.toSet());
-//
-//                relatedArtists.forEach(relatedArtist -> relatedArtistsProfileDTOs.add(objectMapper.convertValue(relatedArtist, ArtistProfileDTO.class)));
-//            }
-//
-//            Set<ReleasesPreviewDTO> featureReleasesPreviewDTOs = new HashSet<>();
-//            Set<Releases> featureReleases = releaseRepository.findFeatureReleasesByArtistId(artistId);
-//            featureReleases.forEach(releases -> featureReleasesPreviewDTOs.add(objectMapper.convertValue(releases, ReleasesPreviewDTO.class)));
-//
-//            return ResponseEntity.status(HttpStatus.OK).body(
-//                    new ApiResponseDTO<>(
-//                            true,
-//                            "Successfully retrieved the artist profile",
-//                            new ArtistProfileDTO(
-//                                    artist.getId(),
-//                                    artist.getName(),
-//                                    artist.getProfileUrl(),
-//                                    artist.getDescription(),
-//                                    trackPreviewDTOS,
-//                                    releasesPreviewDTOS,
-//                                    relatedArtistsProfileDTOs,
-//                                    featureReleasesPreviewDTOs,
-//                                    genreUsedPreviewDTO
-//                            )
-//                    )
-//            );
+            Artist artist = artistRepository.findById(artistId).orElse(null);
+            if (artist == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
+            }
+
+            Set<TrackPreviewDTO> trackPreviewDTOS = new HashSet<>();
+            Set<RecordPreviewDTO> recordPreviewDTOS = new HashSet<>();
+
+            Set<Record> artistRecords = artist.getArtistRecords();
+
+            // Fetch the 5 most recent records
+            Set<Record> recentRecords = artistRecords.stream()
+                    .sorted(Comparator.comparing(Record::getReleaseTimestamp).reversed())
+                    .limit(5)
+                    .collect(Collectors.toSet());
+
+            // Fetch 5 songs from the most recent records
+            Set<Song> recentCreatedSongs = recentRecords.stream()
+                    .flatMap(record -> record.getSongs().stream().limit(5))
+                    .collect(Collectors.toSet());
+
+            recentCreatedSongs.forEach(song -> trackPreviewDTOS.add(objectMapper.convertValue(song, TrackPreviewDTO.class)));
+            recentRecords.forEach(record -> recordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
+
+            Set<RecordPreviewDTO> featureRecordPreviewDTOS = new HashSet<>();
+            Set<Record> featureRecords = recordRepository.findFeatureRecordsByArtistId(artistId);
+            featureRecords.forEach(record -> featureRecordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
+
+            return ResponseEntity.status(HttpStatus.OK).body(
+                    new ApiResponseDTO<>(
+                            true,
+                            "Successfully retrieved the artist profile",
+                            new ArtistProfileDTO(
+                                    artist.getId(),
+                                    artist.getName(),
+                                    artist.getProfileUrl(),
+                                    artist.getDescription(),
+                                    trackPreviewDTOS,
+                                    recordPreviewDTOS,
+                                    featureRecordPreviewDTOS
+                            )
+                    )
+            );
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
-        return null;
     }
 
     public ResponseEntity<ApiResponseDTO<String>> addNewArtist(NewArtistDTO newArtistDTO) {
@@ -253,13 +214,13 @@ public class ArtistService {
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists(int page, int size) {
+    public ResponseEntity<ApiResponseDTO<List<ArtistPreviewDTO>>> getAllArtists(int page, int size) {
         try {
             PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
 
-            Set<Artist> artists = StreamSupport.stream(artistRepository.findAll(pageable).spliterator(), false).collect(Collectors.toSet());
+            List<Artist> artists = StreamSupport.stream(artistRepository.findAll(pageable).spliterator(), false).toList();
 
-            Set<ArtistPreviewDTO> artistPreviewDTOS = new HashSet<>();
+            List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
             artists.forEach(artist -> artistPreviewDTOS.add(objectMapper.convertValue(artist, ArtistPreviewDTO.class)));
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all artists", artistPreviewDTOS));
@@ -276,8 +237,12 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
-            if (updateArtistDTO.name() != null && !updateArtistDTO.name().isBlank()) {
-                artist.setName(updateArtistDTO.name());
+            if (updateArtistDTO.name() != null) {
+                if (!updateArtistDTO.name().isBlank()) {
+                    artist.setName(updateArtistDTO.name());
+                } else {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist name cannot be empty", null));
+                }
             }
 
             if (updateArtistDTO.profileUrl() != null) {

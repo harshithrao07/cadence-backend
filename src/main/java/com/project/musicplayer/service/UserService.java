@@ -51,10 +51,10 @@ public class UserService {
             }
 
             Set<GenrePreviewDTO> genrePreviewDTOS = new HashSet<>();
-            Set<Genre> genres = user.get().getGenrePreferences();
-            for (Genre genre : genres) {
-                genrePreviewDTOS.add(objectMapper.convertValue(genre, GenrePreviewDTO.class));
-            }
+//            Set<Genre> genres = user.get().getGenrePreferences();
+//            for (Genre genre : genres) {
+//                genrePreviewDTOS.add(objectMapper.convertValue(genre, GenrePreviewDTO.class));
+//            }
 
 
             PlaylistVisibility playlistVisibility = matches ? null : PlaylistVisibility.PUBLIC;

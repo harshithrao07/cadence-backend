@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @Validated
@@ -52,7 +53,7 @@ public class ArtistController {
     }
 
     @GetMapping(path = "/all")
-    public ResponseEntity<ApiResponseDTO<Set<ArtistPreviewDTO>>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size) {
+    public ResponseEntity<ApiResponseDTO<List<ArtistPreviewDTO>>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size) {
         return artistService.getAllArtists(page, size);
     }
 

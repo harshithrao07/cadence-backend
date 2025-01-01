@@ -1,7 +1,6 @@
 package com.project.musicplayer.model;
 
-public enum ReleaseType {
+public enum RecordType {
     ALBUM,
-    SINGLE,
-    EP
+    SINGLE
 }

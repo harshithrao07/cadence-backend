@@ -1,4 +1,5 @@
 package com.project.musicplayer.service;
+
 import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +43,8 @@ public class AwsService {
 
 
     @Async
-    public String save(String category, @NotNull String name, String extension) {
-        String fileName = category + "/" + name.replaceAll("\\s+", "_") + extension;
+    public String save(String category, String subCategory, @NotNull String name, String extension) {
+        String fileName = category + "/" + subCategory + "/" + name.replaceAll("\\s+", "_") + extension;
         log.info("Generated file name '{}' for saving in bucket '{}'", fileName, s3BucketName);
         return generateUrl(fileName, HttpMethod.PUT);
     }

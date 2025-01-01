@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record NewArtistDTO(
-        @NotBlank(message = "Cannot be empty") @NotNull(message = "Cannot be null") String name,
+        @NotBlank(message = "Name cannot be empty") String name,
         String profileUrl,
         String description
 ) {
