@@ -1,16 +1,12 @@
 package com.project.musicplayer.controller;
 
 import com.project.musicplayer.dto.ApiResponseDTO;
-import com.project.musicplayer.dto.record.RecordPreviewDTO;
-import com.project.musicplayer.dto.record.UpdateRecordDTO;
 import com.project.musicplayer.dto.song.NewSongsDTO;
 import com.project.musicplayer.dto.song.TrackPreviewDTO;
 import com.project.musicplayer.dto.song.UpdateSongDTO;
-import com.project.musicplayer.model.RecordType;
 import com.project.musicplayer.service.JwtService;
 import com.project.musicplayer.service.SongService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +24,7 @@ public class SongController {
     private final SongService songService;
 
     @PostMapping("/admin/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewSongs(HttpServletRequest request, @Valid @RequestBody NewSongsDTO newSongsDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> addNewSongs(HttpServletRequest request, @Validated @RequestBody NewSongsDTO newSongsDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return songService.addNewSongs(newSongsDTO);
         }
@@ -36,7 +32,7 @@ public class SongController {
     }
 
     @PutMapping("/admin/update/{songId}")
-    public ResponseEntity<ApiResponseDTO<String>> updateExistingSong(HttpServletRequest request, @Valid @RequestBody UpdateSongDTO updateSongDTO, @PathVariable("songId") String songId) {
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingSong(HttpServletRequest request, @Validated @RequestBody UpdateSongDTO updateSongDTO, @PathVariable("songId") String songId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return songService.updateExistingSong(updateSongDTO, songId);
         }
@@ -53,9 +49,10 @@ public class SongController {
 
     @GetMapping("/all")
     public ResponseEntity<ApiResponseDTO<Set<TrackPreviewDTO>>> getAllSongsByRecordId(
-            @RequestParam String recordId
+            @RequestParam String artistId,
+            @RequestParam(required = false) String recordId
     ) {
-        return songService.getAllSongsByRecordId(recordId);
+        return songService.getAllSongs(artistId, recordId);
     }
 
     @GetMapping("/{songId}")

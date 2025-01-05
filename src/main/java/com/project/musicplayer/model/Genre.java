@@ -1,5 +1,6 @@
 package com.project.musicplayer.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,6 +22,8 @@ public class Genre {
     @Column(nullable = false)
     private String type;
 
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "genres")
+    @JsonManagedReference
     private Set<Song> songs = new HashSet<>();
 }

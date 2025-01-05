@@ -127,9 +127,16 @@ public class RecordService {
 
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingRecord(String recordId) {
         try {
-            if (!recordRepository.existsById(recordId)) {
+            Record record = recordRepository.findById(recordId).orElse(null);
+            if (record == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
             }
+
+            Set<Artist> artists = record.getArtists();
+            artists.forEach(artist -> {
+                artist.getArtistRecords().remove(record);
+                artistRepository.save(artist);
+            });
 
             recordRepository.deleteById(recordId);
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully deleted the record", null));
@@ -151,6 +158,21 @@ public class RecordService {
             records.forEach(record -> recordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved records", recordPreviewDTOS));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<RecordPreviewDTO>> getRecordById(String recordId) {
+        try {
+            Record record = recordRepository.findById(recordId).orElse(null);
+            if (record == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
+            }
+
+            RecordPreviewDTO recordPreviewDTO = objectMapper.convertValue(record, RecordPreviewDTO.class);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved record " + recordId, recordPreviewDTO));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));

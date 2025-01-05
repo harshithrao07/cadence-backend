@@ -8,7 +8,6 @@ import com.project.musicplayer.model.RecordType;
 import com.project.musicplayer.service.JwtService;
 import com.project.musicplayer.service.RecordService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +25,7 @@ public class RecordController {
     private final RecordService recordService;
 
     @PostMapping("/admin/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewRecord(HttpServletRequest request, @Valid @RequestBody NewRecordDTO newRecordDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> addNewRecord(HttpServletRequest request, @Validated @RequestBody NewRecordDTO newRecordDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return recordService.addNewRecord(newRecordDTO);
         }
@@ -34,7 +33,7 @@ public class RecordController {
     }
 
     @PutMapping("/admin/update/{recordId}")
-    public ResponseEntity<ApiResponseDTO<String>> updateExistingRecord(HttpServletRequest request, @Valid @RequestBody UpdateRecordDTO updateRecordDTO, @PathVariable("recordId") String recordId) {
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingRecord(HttpServletRequest request, @Validated @RequestBody UpdateRecordDTO updateRecordDTO, @PathVariable("recordId") String recordId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return recordService.updateExistingRecord(updateRecordDTO, recordId);
         }
@@ -55,6 +54,11 @@ public class RecordController {
             @RequestParam(required = false) RecordType recordType
     ) {
         return recordService.getAllRecordsByArtistId(artistId, recordType);
+    }
+
+    @GetMapping("/{recordId}")
+    public ResponseEntity<ApiResponseDTO<RecordPreviewDTO>> getRecordById(@PathVariable("recordId") String recordId) {
+        return recordService.getRecordById(recordId);
     }
 
 }

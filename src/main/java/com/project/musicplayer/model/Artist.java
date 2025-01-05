@@ -43,6 +43,7 @@ public class Artist {
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
+    @JsonBackReference
     private Set<Song> artistSongs = new HashSet<>();
 
     @EqualsAndHashCode.Exclude
@@ -52,6 +53,7 @@ public class Artist {
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
+    @JsonBackReference
     private Set<Song> featureSongs = new HashSet<>();
 
     @EqualsAndHashCode.Exclude

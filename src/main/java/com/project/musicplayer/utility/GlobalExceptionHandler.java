@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         });
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiResponseDTO<>(false, errorMap.toString(), null));
+                .body(new ApiResponseDTO<>(false, "An error occurred in the server", errorMap));
     }
 
 }

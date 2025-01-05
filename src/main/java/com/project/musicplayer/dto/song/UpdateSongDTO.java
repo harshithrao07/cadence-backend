@@ -9,6 +9,6 @@ public record UpdateSongDTO(
         Optional<Integer> totalDuration,
         Optional<String> coverUrl,
         Optional<Set<String>> genreIds,
-        Optional<Set<String>> features
+        Optional<Set<String>> featureIds
 ) {
 }

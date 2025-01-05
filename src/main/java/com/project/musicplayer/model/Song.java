@@ -1,5 +1,7 @@
 package com.project.musicplayer.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,15 +36,19 @@ public class Song {
 
     @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "artistSongs")
+    @JsonManagedReference
     private Set<Artist> createdBy = new HashSet<>();
 
     @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "featureSongs")
+    @JsonManagedReference
     private Set<Artist> features = new HashSet<>();
 
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "likedSongs")
     private Set<User> likedBy = new HashSet<>();
 
+    @EqualsAndHashCode.Exclude
     @ManyToMany(mappedBy = "songs")
     private Set<Playlist> playlists = new HashSet<>();
 
@@ -52,5 +58,6 @@ public class Song {
             joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id")
     )
+    @JsonBackReference
     private Set<Genre> genres = new HashSet<>();
 }

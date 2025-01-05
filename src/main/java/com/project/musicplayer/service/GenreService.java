@@ -21,15 +21,15 @@ public class GenreService {
     private final GenreRepository genreRepository;
     ObjectMapper objectMapper = new ObjectMapper();
 
-    public ResponseEntity<ApiResponseDTO<String>> addNewGenre(@Valid String type) {
+    public ResponseEntity<ApiResponseDTO<String>> addNewGenre(String type) {
         try {
             String genreType = type.toUpperCase(Locale.ROOT);
-            if (genreRepository.existsByType(type)) {
+            if (genreRepository.existsByType(genreType)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Genre already exists", null));
             }
 
             Genre genre = Genre.builder()
-                    .type(type)
+                    .type(genreType)
                     .build();
             Genre savedGenre = genreRepository.save(genre);
 
