@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.project</groupId>
-	<artifactId>musicplayer</artifactId>
+	<artifactId>cadence</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>musicplayer</name>
-	<description>Music Player</description>
+	<name>cadence</name>
+	<description>Cadence Backend</description>
 	<url/>
 	<licenses>
 		<license/>
