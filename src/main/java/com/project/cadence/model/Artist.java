@@ -37,7 +37,7 @@ public class Artist {
     private Set<Record> artistRecords = new HashSet<>();
 
     @EqualsAndHashCode.Exclude
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinTable(
             name = "artist_created_songs",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),

@@ -43,4 +43,11 @@ public class AwsService {
         return generateUrl(fileName, HttpMethod.PUT);
     }
 
+    public void deleteObject(String fileName) {
+        try {
+            amazonS3.deleteObject(s3BucketName, fileName);
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+        }
+    }
 }

@@ -144,6 +144,20 @@ public class SongService {
                 }
             }
 
+            if (updateSongDTO.songUrl().isPresent()) {
+                if (!updateSongDTO.songUrl().get().equals(song.getSongUrl())) {
+                    if (awsService.findByName(song.getSongUrl())) {
+                        awsService.deleteObject(song.getSongUrl());
+                    }
+
+                    if (!awsService.findByName(updateSongDTO.songUrl().get())) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, song.getTitle() + " track has not been uploaded to S3 yet", null));
+                    } else {
+                        song.setSongUrl(updateSongDTO.songUrl().get());
+                    }
+                }
+            }
+
             if (updateSongDTO.totalDuration().isPresent()) {
                 song.setTotalDuration(updateSongDTO.totalDuration().get());
             }
@@ -219,11 +233,7 @@ public class SongService {
             }
 
             if (awsService.findByName(song.getSongUrl())) {
-                String deleteUrl = awsService.generateUrl(song.getSongUrl(), HttpMethod.DELETE);
-                HttpStatusCode statusCode = restClient.delete(deleteUrl);
-                if (!statusCode.is2xxSuccessful()) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "Unable to delete the requested song from S3", null));
-                }
+                awsService.deleteObject(song.getSongUrl());
             }
 
             if (record.getRecordType().equals(RecordType.SINGLE)) {

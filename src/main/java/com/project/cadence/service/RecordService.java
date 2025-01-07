@@ -56,7 +56,7 @@ public class RecordService {
             Record record = Record.builder()
                     .title(newRecordDTO.title())
                     .releaseTimestamp(newRecordDTO.releaseTimestamp().orElse(System.currentTimeMillis()))
-                    .coverUrl(newRecordDTO.coverUrl().orElse(""))
+                    .coverUrl(newRecordDTO.coverUrl().orElse("/"))
                     .recordType(newRecordDTO.recordType())
                     .artists(artists)
                     .build();
@@ -91,6 +91,23 @@ public class RecordService {
                 }
 
                 songRepository.saveAll(songs);
+            }
+
+            if (updateRecordDTO.coverUrl().isPresent()) {
+                if (!updateRecordDTO.coverUrl().get().equals(record.getCoverUrl()) && !updateRecordDTO.coverUrl().get().isEmpty()) {
+                    if (awsService.findByName(record.getCoverUrl())) {
+                        awsService.deleteObject(record.getCoverUrl());
+                    }
+
+                    if (!awsService.findByName(updateRecordDTO.coverUrl().get())) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Updated " + record.getTitle() + " cover image has not been uploaded to S3 yet", null));
+                    } else {
+                        record.setCoverUrl(updateRecordDTO.coverUrl().get());
+                        Set<Song> songs = record.getSongs();
+                        songs.forEach(song -> song.setCoverUrl(updateRecordDTO.coverUrl().get()));
+                        songRepository.saveAll(songs);
+                    }
+                }
             }
 
             if (updateRecordDTO.releaseTimestamp().isPresent()) {
@@ -139,12 +156,8 @@ public class RecordService {
                 artistRepository.save(artist);
             });
 
-            if(awsService.findByName(record.getCoverUrl())) {
-                String deleteUrl = awsService.generateUrl(record.getCoverUrl(), HttpMethod.DELETE);
-                HttpStatusCode statusCode = restClient.delete(deleteUrl);
-                if (!statusCode.is2xxSuccessful()) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "Unable to delete the requested cover image from S3", null));
-                }
+            if (awsService.findByName(record.getCoverUrl())) {
+                awsService.deleteObject(record.getCoverUrl());
             }
 
             recordRepository.deleteById(recordId);

@@ -5,6 +5,7 @@ import java.util.Set;
 
 public record UpdateRecordDTO(
         Optional<String> title,
+        Optional<String> coverUrl,
         Optional<Long> releaseTimestamp,
         Optional<Set<String>> artistIds
 ) {
