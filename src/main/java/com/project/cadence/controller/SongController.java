@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.Set;
 
@@ -60,5 +61,10 @@ public class SongController {
             @PathVariable("songId") String songId
     ) {
         return songService.getSongById(songId);
+    }
+
+    @GetMapping("/stream/{songId}")
+    public ResponseEntity<StreamingResponseBody> streamSongById(@PathVariable("songId") String songId) {
+        return songService.streamSongById(songId);
     }
 }

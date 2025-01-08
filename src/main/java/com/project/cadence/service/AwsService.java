@@ -2,6 +2,7 @@ package com.project.cadence.service;
 
 import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.S3Object;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.URL;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -49,5 +51,13 @@ public class AwsService {
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
         }
+    }
+
+    public S3Object getObject(String fileName) {
+        return amazonS3.getObject(s3BucketName, fileName);
+    }
+
+    public URL getLink(String fileName) {
+        return amazonS3.getUrl(s3BucketName, fileName);
     }
 }

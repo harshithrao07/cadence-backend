@@ -1,6 +1,8 @@
 package com.project.cadence.service;
 
 import com.amazonaws.HttpMethod;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.artist.TrackArtistInfoDTO;
@@ -17,11 +19,14 @@ import com.project.cadence.repository.RecordRepository;
 import com.project.cadence.repository.SongRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -338,11 +343,41 @@ public class SongService {
         }
     }
 
-//    public void streamSongById(String songId) {
-//        try {
-//            String filename = "music/"
-//        } catch (Exception e) {
-//            log.error("An exception has occurred {}", e.getMessage(), e);
-//        }
-//    }
+    public ResponseEntity<StreamingResponseBody> streamSongById(String songId) {
+        try {
+            Song song = songRepository.findById(songId).orElse(null);
+            if (song == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+
+            String fileName = song.getSongUrl();
+            if (!awsService.findByName(fileName)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+
+            S3Object s3Object = awsService.getObject(fileName);
+            StreamingResponseBody stream = getStreamingResponseBody(s3Object);
+            return ResponseEntity.status(HttpStatus.OK).body(stream);
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    private static @NotNull StreamingResponseBody getStreamingResponseBody(@NotNull S3Object s3Object) {
+        S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
+
+        StreamingResponseBody stream = outputStream -> {
+            try (s3ObjectInputStream) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = s3ObjectInputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+            } catch (Exception e) {
+                log.error("An exception has occurred {}", e.getMessage(), e);
+            }
+        };
+        return stream;
+    }
 }

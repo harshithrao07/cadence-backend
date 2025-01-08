@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -66,6 +67,12 @@ public class ArtistService {
             Set<Record> featureRecords = recordRepository.findFeatureRecordsByArtistId(artistId);
             featureRecords.forEach(record -> featureRecordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
 
+            String fileName = artist.getProfileUrl();
+            if (awsService.findByName(fileName)) {
+                URL url = awsService.getLink(fileName);
+                artist.setProfileUrl(url.toString());
+            }
+
             return ResponseEntity.status(HttpStatus.OK).body(
                     new ApiResponseDTO<>(
                             true,
@@ -99,7 +106,7 @@ public class ArtistService {
 
             Artist artist = Artist.builder()
                     .name(newArtistDTO.name())
-                    .profileUrl(newArtistDTO.profileUrl().orElse("/"))
+                    .profileUrl(newArtistDTO.profileUrl().orElse("profile/artist/placeholder.jpg"))
                     .description(newArtistDTO.description().orElse(""))
                     .build();
 
@@ -222,7 +229,14 @@ public class ArtistService {
             List<Artist> artists = StreamSupport.stream(artistRepository.findAll(pageable).spliterator(), false).toList();
 
             List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
-            artists.forEach(artist -> artistPreviewDTOS.add(objectMapper.convertValue(artist, ArtistPreviewDTO.class)));
+            artists.forEach(artist -> {
+                String fileName = artist.getProfileUrl();
+                if (awsService.findByName(fileName)) {
+                    URL url = awsService.getLink(fileName);
+                    artist.setProfileUrl(url.toString());
+                }
+                artistPreviewDTOS.add(objectMapper.convertValue(artist, ArtistPreviewDTO.class));
+            });
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all artists", artistPreviewDTOS));
         } catch (Exception e) {
