@@ -6,6 +6,7 @@ import com.project.cadence.model.Role;
 import com.project.cadence.model.User;
 import com.project.cadence.repository.UserRepository;
 import com.project.cadence.utility.TokenType;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -37,7 +38,8 @@ public class AuthenticationService {
                     .name(registerRequestDTO.name())
                     .email(registerRequestDTO.email())
                     .password(passwordEncoder.encode(registerRequestDTO.password()))
-                    .role(Role.ADMIN)
+                    .role(Role.USER)
+                    .dateOfBirth(registerRequestDTO.dateOfBirth())
                     .build();
 
             User savedUser = userRepository.save(user);
@@ -107,6 +109,17 @@ public class AuthenticationService {
 
             String accessToken = jwtService.generateJwtToken(userEmail, role, TokenType.access);
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "New Access Token successfully generated", accessToken));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public ResponseEntity<ApiResponseDTO<Boolean>> validateEmail(@Valid String email) {
+        try {
+            boolean exists = userRepository.existsByEmail(email);
+            String message = exists ? "User already exists" : "User does not exist";
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, message, exists));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));

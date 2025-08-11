@@ -33,4 +33,9 @@ public class AuthenticationController {
     public ResponseEntity<ApiResponseDTO<String>> refreshToken(@Valid @RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
         return authenticationService.refreshToken(refreshTokenRequestDTO);
     }
+
+    @PostMapping("/validateEmail")
+    public ResponseEntity<ApiResponseDTO<Boolean>> validateEmail(@Valid @RequestBody String email) {
+        return authenticationService.validateEmail(email);
+    }
 }

@@ -3,6 +3,7 @@ package com.project.cadence.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -28,6 +29,9 @@ public class User {
 
     @Column(name = "profile_url")
     private String profileUrl;
+
+    @Column(name = "date_of_birth")
+    private Date dateOfBirth;
 
     @Enumerated(EnumType.STRING)
     private Role role;
