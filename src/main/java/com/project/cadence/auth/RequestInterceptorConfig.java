@@ -1,6 +1,5 @@
-package com.project.cadence.config;
+package com.project.cadence.auth;
 
-import com.project.cadence.utility.RequestInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Configuration;
@@ -29,3 +28,4 @@ public class RequestInterceptorConfig implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 }
+

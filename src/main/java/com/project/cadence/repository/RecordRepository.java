@@ -16,8 +16,4 @@ public interface RecordRepository extends CrudRepository<Record, String> {
             @Param("artistId") String artistId,
             @Param("recordType") String recordType);
 
-
-    @Query(value = "SELECT * FROM record WHERE id IN (SELECT record_id FROM artist_featured_records WHERE artist_id = :artistId)", nativeQuery = true)
-    Set<Record> findFeatureRecordsByArtistId(@Param("artistId") String artistId);
-
 }

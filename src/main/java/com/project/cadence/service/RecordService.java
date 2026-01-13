@@ -47,16 +47,9 @@ public class RecordService {
                 artists.add(artist);
             }
 
-            if (newRecordDTO.coverUrl().isPresent()) {
-                if (!awsService.findByName(newRecordDTO.coverUrl().get())) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The cover image for the record has not been uploaded to S3 yet", null));
-                }
-            }
-
             Record record = Record.builder()
                     .title(newRecordDTO.title())
-                    .releaseTimestamp(newRecordDTO.releaseTimestamp().orElse(System.currentTimeMillis()))
-                    .coverUrl(newRecordDTO.coverUrl().orElse("/"))
+                    .releaseTimestamp(newRecordDTO.releaseTimestamp())
                     .recordType(newRecordDTO.recordType())
                     .artists(artists)
                     .build();
@@ -68,7 +61,7 @@ public class RecordService {
             }
 
             artistRepository.saveAll(artists);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Added a new record successfully", savedRecord.getId()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "Added a new record successfully", savedRecord.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
@@ -91,23 +84,6 @@ public class RecordService {
                 }
 
                 songRepository.saveAll(songs);
-            }
-
-            if (updateRecordDTO.coverUrl().isPresent()) {
-                if (!updateRecordDTO.coverUrl().get().equals(record.getCoverUrl()) && !updateRecordDTO.coverUrl().get().isEmpty()) {
-                    if (awsService.findByName(record.getCoverUrl())) {
-                        awsService.deleteObject(record.getCoverUrl());
-                    }
-
-                    if (!awsService.findByName(updateRecordDTO.coverUrl().get())) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Updated " + record.getTitle() + " cover image has not been uploaded to S3 yet", null));
-                    } else {
-                        record.setCoverUrl(updateRecordDTO.coverUrl().get());
-                        Set<Song> songs = record.getSongs();
-                        songs.forEach(song -> song.setCoverUrl(updateRecordDTO.coverUrl().get()));
-                        songRepository.saveAll(songs);
-                    }
-                }
             }
 
             if (updateRecordDTO.releaseTimestamp().isPresent()) {
@@ -177,7 +153,13 @@ public class RecordService {
             String recordTypeString = (recordType != null) ? recordType.toString() : null;
             Set<Record> records = recordRepository.findArtistRecordsByArtistId(artistId, recordTypeString);
             Set<RecordPreviewDTO> recordPreviewDTOS = new HashSet<>();
-            records.forEach(record -> recordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
+            records.forEach(record -> recordPreviewDTOS.add(new RecordPreviewDTO(
+                    record.getId(),
+                    record.getTitle(),
+                    record.getReleaseTimestamp(),
+                    record.getCoverUrl(),
+                    record.getRecordType()
+            )));
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved records", recordPreviewDTOS));
         } catch (Exception e) {
@@ -193,7 +175,13 @@ public class RecordService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
             }
 
-            RecordPreviewDTO recordPreviewDTO = objectMapper.convertValue(record, RecordPreviewDTO.class);
+            RecordPreviewDTO recordPreviewDTO = new RecordPreviewDTO(
+                    recordId,
+                    record.getTitle(),
+                    record.getReleaseTimestamp(),
+                    record.getCoverUrl(),
+                    record.getRecordType()
+            );
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved record " + recordId, recordPreviewDTO));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);

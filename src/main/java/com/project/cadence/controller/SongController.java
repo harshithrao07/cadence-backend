@@ -1,9 +1,7 @@
 package com.project.cadence.controller;
 
 import com.project.cadence.dto.ApiResponseDTO;
-import com.project.cadence.dto.song.NewSongsDTO;
-import com.project.cadence.dto.song.TrackPreviewDTO;
-import com.project.cadence.dto.song.UpdateSongDTO;
+import com.project.cadence.dto.song.*;
 import com.project.cadence.service.JwtService;
 import com.project.cadence.service.SongService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -24,15 +23,15 @@ public class SongController {
     private final JwtService jwtService;
     private final SongService songService;
 
-    @PostMapping("/admin/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewSongs(HttpServletRequest request, @Validated @RequestBody NewSongsDTO newSongsDTO) {
+    @PostMapping("/add")
+    public ResponseEntity<ApiResponseDTO<List<AddSongResponseDTO>>> addNewSongs(HttpServletRequest request, @Validated @RequestBody NewSongsDTO newSongsDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return songService.addNewSongs(newSongsDTO);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @PutMapping("/admin/update/{songId}")
+    @PutMapping("/update/{songId}")
     public ResponseEntity<ApiResponseDTO<String>> updateExistingSong(HttpServletRequest request, @Validated @RequestBody UpdateSongDTO updateSongDTO, @PathVariable("songId") String songId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return songService.updateExistingSong(updateSongDTO, songId);
@@ -40,7 +39,7 @@ public class SongController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @DeleteMapping("/admin/delete/{songId}")
+    @DeleteMapping("/delete/{songId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingSong(HttpServletRequest request, @PathVariable("songId") String songId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return songService.deleteExistingSong(songId);
@@ -66,5 +65,10 @@ public class SongController {
     @GetMapping("/stream/{songId}")
     public ResponseEntity<StreamingResponseBody> streamSongById(@PathVariable("songId") String songId) {
         return songService.streamSongById(songId);
+    }
+
+    @GetMapping("/songsByRecord/{recordId}")
+    public ResponseEntity<ApiResponseDTO<List<SongInRecordDTO>>> getSongsByRecord(@PathVariable("recordId") String recordId) {
+        return songService.getSongsByRecord(recordId);
     }
 }

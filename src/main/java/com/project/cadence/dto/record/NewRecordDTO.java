@@ -9,8 +9,7 @@ import java.util.Set;
 
 public record NewRecordDTO(
         @NotBlank(message = "Record title cannot be empty") String title,
-        Optional<Long> releaseTimestamp,
-        Optional<String> coverUrl,
+        @NotNull(message = "Release Timestamp cannot be null") Long releaseTimestamp,
         @NotNull(message = "Record Type cannot be null") RecordType recordType,
         @NotNull(message = "Artist Id's cannot be empty") Set<String> artistIds
 ) {

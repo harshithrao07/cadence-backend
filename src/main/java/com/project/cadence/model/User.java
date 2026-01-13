@@ -8,17 +8,23 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "users")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private String id;
 
     @Column(nullable = false, unique = true)
+    @ToString.Include
     private String email;
 
     @Column(name = "firstname", nullable = false)
@@ -36,14 +42,20 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @OneToOne(mappedBy = "user")
-    private PlayHistory playHistory;
+    /* -------- Play history (composite key model) -------- */
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private Set<PlayHistory> playHistory = new HashSet<>();
+
+    /* -------- Owned playlists -------- */
+
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     private Set<Playlist> playlists = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    /* -------- Likes -------- */
+
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinTable(
             name = "liked_songs",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
@@ -51,7 +63,7 @@ public class User {
     )
     private Set<Song> likedSongs = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinTable(
             name = "liked_playlists",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
@@ -59,7 +71,9 @@ public class User {
     )
     private Set<Playlist> likedPlaylists = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    /* -------- User follows user -------- */
+
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_following",
             joinColumns = @JoinColumn(name = "follower_id", referencedColumnName = "id"),
@@ -67,10 +81,12 @@ public class User {
     )
     private Set<User> userFollowing = new HashSet<>();
 
-    @ManyToMany(mappedBy = "userFollowing")
+    @ManyToMany(mappedBy = "userFollowing", fetch = FetchType.LAZY)
     private Set<User> userFollowers = new HashSet<>();
 
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
+    /* -------- User follows artists -------- */
+
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @JoinTable(
             name = "artist_following",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),

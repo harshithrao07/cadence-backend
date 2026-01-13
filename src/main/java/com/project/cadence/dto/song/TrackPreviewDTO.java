@@ -10,9 +10,10 @@ import java.util.Set;
 public record TrackPreviewDTO(
         String id,
         String title,
-        int totalDuration,
+        Integer totalDuration,
         String coverUrl,
+        Long totalPlays,
         Set<TrackArtistInfoDTO> trackArtistInfo,
-        TrackRecordInfoDTO trackRecordInfoDTO
+        TrackRecordInfoDTO trackRecordInfo
 ) {
 }

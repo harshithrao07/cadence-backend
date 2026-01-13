@@ -7,7 +7,7 @@ import com.project.cadence.model.RecordType;
 public record RecordPreviewDTO(
         String id,
         String title,
-        String releaseTimestamp,
+        long releaseTimestamp,
         String coverUrl,
         RecordType recordType
 ) {

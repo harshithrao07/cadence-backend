@@ -1,10 +1,7 @@
 package com.project.cadence.controller;
 
 import com.project.cadence.dto.ApiResponseDTO;
-import com.project.cadence.dto.artist.ArtistPreviewDTO;
-import com.project.cadence.dto.artist.ArtistProfileDTO;
-import com.project.cadence.dto.artist.NewArtistDTO;
-import com.project.cadence.dto.artist.UpdateArtistDTO;
+import com.project.cadence.dto.artist.*;
 import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.service.ArtistService;
 import com.project.cadence.service.JwtService;
@@ -26,7 +23,7 @@ public class ArtistController {
     private final JwtService jwtService;
     private final ArtistService artistService;
 
-    @PostMapping(path = "/admin/add")
+    @PostMapping(path = "/add")
     public ResponseEntity<ApiResponseDTO<String>> addNewArtist(HttpServletRequest request, @Validated @RequestBody NewArtistDTO newArtistDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.addNewArtist(newArtistDTO);
@@ -34,7 +31,7 @@ public class ArtistController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @PutMapping(path = "/admin/update/{artistId}")
+    @PutMapping(path = "/update/{artistId}")
     public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(HttpServletRequest request, @Validated @RequestBody UpdateArtistDTO updateArtistDTO, @PathVariable("artistId") String artistId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.updateExistingArtist(updateArtistDTO, artistId);
@@ -43,7 +40,7 @@ public class ArtistController {
     }
 
 
-    @DeleteMapping(path = "/admin/delete/{artistId}")
+    @DeleteMapping(path = "/delete/{artistId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return artistService.deleteExistingArtist(artistId);
@@ -52,8 +49,8 @@ public class ArtistController {
     }
 
     @GetMapping(path = "/all")
-    public ResponseEntity<ApiResponseDTO<List<ArtistPreviewDTO>>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "5") int size) {
-        return artistService.getAllArtists(page, size);
+    public ResponseEntity<ApiResponseDTO<PaginatedAllArtistsResponse>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "24") int size, @RequestParam(required = false) String key) {
+        return artistService.getAllArtists(page, size, key);
     }
 
     @GetMapping(path = "/{artistId}")

@@ -1,7 +1,5 @@
 package com.project.cadence.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,20 +7,26 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "song")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class Song {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private String id;
 
     @Column(nullable = false)
+    @ToString.Include
     private String title;
 
-    @Column(nullable = false)
+    @Column
     private String songUrl;
 
     @Column(name = "total_duration", nullable = false)
@@ -31,25 +35,17 @@ public class Song {
     @Column(name = "cover_url")
     private String coverUrl;
 
-    @Column(name = "record_id")
-    private String recordId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "record_id", nullable = false)
+    private Record record;
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "artistSongs")
-    @JsonManagedReference
+    @ManyToMany(mappedBy = "artistSongs", fetch = FetchType.LAZY)
     private Set<Artist> createdBy = new HashSet<>();
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "featureSongs")
-    @JsonManagedReference
-    private Set<Artist> features = new HashSet<>();
-
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "likedSongs")
+    @ManyToMany(mappedBy = "likedSongs", fetch = FetchType.LAZY)
     private Set<User> likedBy = new HashSet<>();
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "songs")
+    @ManyToMany(mappedBy = "songs", fetch = FetchType.LAZY)
     private Set<Playlist> playlists = new HashSet<>();
 
     @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
@@ -58,6 +54,8 @@ public class Song {
             joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id")
     )
-    @JsonBackReference
     private Set<Genre> genres = new HashSet<>();
+
+    @Column(name = "track_order", columnDefinition = "INTEGER DEFAULT 1")
+    private int order;
 }

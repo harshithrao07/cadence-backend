@@ -2,11 +2,9 @@ package com.project.cadence.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.cadence.dto.ApiResponseDTO;
-import com.project.cadence.dto.artist.ArtistPreviewDTO;
-import com.project.cadence.dto.artist.ArtistProfileDTO;
-import com.project.cadence.dto.artist.NewArtistDTO;
-import com.project.cadence.dto.artist.UpdateArtistDTO;
+import com.project.cadence.dto.artist.*;
 import com.project.cadence.dto.record.RecordPreviewDTO;
+import com.project.cadence.dto.song.SongsInArtistProfileDTO;
 import com.project.cadence.dto.song.TrackPreviewDTO;
 import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.model.*;
@@ -16,6 +14,7 @@ import com.project.cadence.repository.RecordRepository;
 import com.project.cadence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -23,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.net.URL;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -44,7 +45,6 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
-            Set<TrackPreviewDTO> trackPreviewDTOS = new HashSet<>();
             Set<RecordPreviewDTO> recordPreviewDTOS = new HashSet<>();
 
             Set<Record> artistRecords = artist.getArtistRecords();
@@ -54,24 +54,22 @@ public class ArtistService {
                     .sorted(Comparator.comparing(Record::getReleaseTimestamp).reversed())
                     .limit(5)
                     .collect(Collectors.toSet());
+            recentRecords.forEach(record -> recordPreviewDTOS.add(new RecordPreviewDTO(
+                    record.getId(),
+                    record.getTitle(),
+                    record.getReleaseTimestamp(),
+                    record.getCoverUrl(),
+                    record.getRecordType()
+            )));
 
-            // Fetch 5 songs from the most recent records
-            Set<Song> recentCreatedSongs = recentRecords.stream()
-                    .flatMap(record -> record.getSongs().stream().limit(5))
-                    .collect(Collectors.toSet());
+            // Fetch popular songs
+            List<SongsInArtistProfileDTO> popularSongs = artistRepository.findTopSongsForArtist(artistId, PageRequest.of(0, 10));
 
-            recentCreatedSongs.forEach(song -> trackPreviewDTOS.add(objectMapper.convertValue(song, TrackPreviewDTO.class)));
-            recentRecords.forEach(record -> recordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
+            Instant fromDate = Instant.now().minus(30, ChronoUnit.DAYS);
 
-            Set<RecordPreviewDTO> featureRecordPreviewDTOS = new HashSet<>();
-            Set<Record> featureRecords = recordRepository.findFeatureRecordsByArtistId(artistId);
-            featureRecords.forEach(record -> featureRecordPreviewDTOS.add(objectMapper.convertValue(record, RecordPreviewDTO.class)));
+            Long monthlyListeners =
+                    artistRepository.getMonthlyListenersForArtist(artistId, fromDate);
 
-            String fileName = artist.getProfileUrl();
-            if (awsService.findByName(fileName)) {
-                URL url = awsService.getLink(fileName);
-                artist.setProfileUrl(url.toString());
-            }
 
             return ResponseEntity.status(HttpStatus.OK).body(
                     new ApiResponseDTO<>(
@@ -82,9 +80,10 @@ public class ArtistService {
                                     artist.getName(),
                                     artist.getProfileUrl(),
                                     artist.getDescription(),
-                                    trackPreviewDTOS,
-                                    recordPreviewDTOS,
-                                    featureRecordPreviewDTOS
+                                    artist.getFollowersCount(),
+                                    monthlyListeners,
+                                    popularSongs,
+                                    recordPreviewDTOS
                             )
                     )
             );
@@ -106,7 +105,6 @@ public class ArtistService {
 
             Artist artist = Artist.builder()
                     .name(newArtistDTO.name())
-                    .profileUrl(newArtistDTO.profileUrl().orElse("profile/artist/placeholder.jpg"))
                     .description(newArtistDTO.description().orElse(""))
                     .build();
 
@@ -115,7 +113,7 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the artist", null));
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Artist created successfully", artist.getId()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "Artist created successfully", artist.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
@@ -222,28 +220,55 @@ public class ArtistService {
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<List<ArtistPreviewDTO>>> getAllArtists(int page, int size) {
+    public ResponseEntity<ApiResponseDTO<PaginatedAllArtistsResponse>> getAllArtists(
+            int page,
+            int size,
+            String key
+    ) {
         try {
             PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
 
-            List<Artist> artists = StreamSupport.stream(artistRepository.findAll(pageable).spliterator(), false).toList();
+            Page<Artist> artistPage;
 
-            List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
-            artists.forEach(artist -> {
-                String fileName = artist.getProfileUrl();
-                if (awsService.findByName(fileName)) {
-                    URL url = awsService.getLink(fileName);
-                    artist.setProfileUrl(url.toString());
-                }
-                artistPreviewDTOS.add(objectMapper.convertValue(artist, ArtistPreviewDTO.class));
-            });
+            if (key != null && !key.trim().isEmpty()) {
+                artistPage = artistRepository.findByNameContainingIgnoreCase(key.trim(), pageable);
+            } else {
+                artistPage = artistRepository.findAll(pageable);
+            }
 
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all artists", artistPreviewDTOS));
+            List<ArtistPreviewDTO> artistPreviewDTOS = artistPage
+                    .stream()
+                    .map(artist -> new ArtistPreviewDTO(
+                            artist.getId(),
+                            artist.getName(),
+                            artist.getProfileUrl()
+                    ))
+                    .toList();
+
+            PaginatedAllArtistsResponse response =
+                    new PaginatedAllArtistsResponse(
+                            artistPreviewDTOS,
+                            artistPage.getNumber(),
+                            artistPage.getSize(),
+                            artistPage.getTotalElements(),
+                            artistPage.getTotalPages(),
+                            artistPage.isLast()
+                    );
+            return ResponseEntity.ok(
+                    new ApiResponseDTO<>(
+                            true,
+                            "Successfully retrieved artists",
+                            response
+                    )
+            );
+
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error has occurred in the server", null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponseDTO<>(false, "An error has occurred in the server", null));
         }
     }
+
 
     public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(UpdateArtistDTO updateArtistDTO, String artistId) {
         try {
@@ -262,13 +287,13 @@ public class ArtistService {
 
             if (updateArtistDTO.profileUrl() != null) {
                 if (!updateArtistDTO.profileUrl().equals(artist.getProfileUrl()) && !updateArtistDTO.profileUrl().isEmpty()) {
-                    if (awsService.findByName(artist.getProfileUrl())) {
-                        awsService.deleteObject(artist.getProfileUrl());
-                    }
-
                     if (!awsService.findByName(updateArtistDTO.profileUrl())) {
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Updated " + artist.getName() + " profile has not been uploaded to S3 yet", null));
                     } else {
+                        if (awsService.findByName(artist.getProfileUrl())) {
+                            awsService.deleteObject(artist.getProfileUrl());
+                        }
+
                         artist.setProfileUrl(updateArtistDTO.profileUrl());
                     }
                 }

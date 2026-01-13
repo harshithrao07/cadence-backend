@@ -8,21 +8,25 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "genre")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class Genre {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private String id;
 
     @Column(nullable = false)
+    @ToString.Include
     private String type;
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "genres")
-    @JsonManagedReference
+    @ManyToMany(mappedBy = "genres", fetch = FetchType.LAZY)
     private Set<Song> songs = new HashSet<>();
 }

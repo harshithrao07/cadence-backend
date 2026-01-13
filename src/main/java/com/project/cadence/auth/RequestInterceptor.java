@@ -1,4 +1,4 @@
-package com.project.cadence.utility;
+package com.project.cadence.auth;
 
 import com.project.cadence.model.User;
 import com.project.cadence.service.JwtService;
@@ -29,6 +29,10 @@ public class RequestInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(@Nonnull HttpServletRequest request, @Nonnull HttpServletResponse response, @Nonnull Object handler) throws IOException {
         try {
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                return true;
+            }
+
             String authHeader = request.getHeader("Authorization");
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Missing or invalid Authorization header");
@@ -40,7 +44,7 @@ public class RequestInterceptor implements HandlerInterceptor {
 
             // Basic token structure validation
             if (sections.length != 3) {
-                sendErrorResponse(response, HttpStatus.BAD_REQUEST, "Invalid token format");
+                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Invalid token format");
                 return false;
             }
 
@@ -55,7 +59,7 @@ public class RequestInterceptor implements HandlerInterceptor {
 
             // If the signature is not matching then the token might have been tampered then return false
             if (!tokenSignature.equals(expectedSignature)) {
-                sendErrorResponse(response, HttpStatus.FORBIDDEN, "Token integrity verification failed");
+                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Token integrity verification failed");
                 return false;
             }
 
@@ -65,14 +69,14 @@ public class RequestInterceptor implements HandlerInterceptor {
                 // Extract user email from jwt payload
                 String userEmail = this.jwtService.extractEmailForPayload(payload);
                 if (userEmail == null || userEmail.isEmpty()) {
-                    sendErrorResponse(response, HttpStatus.BAD_REQUEST, "Unable to extract user email from token");
+                    sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Unable to extract user email from token");
                     return false;
                 }
 
                 // Load user from the DB
                 Optional<User> optionalUser = this.userService.loadUserByEmail(userEmail);
                 if (optionalUser.isEmpty()) {
-                    sendErrorResponse(response, HttpStatus.NOT_FOUND, "User not found");
+                    sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "User not found");
                     return false;
                 }
 

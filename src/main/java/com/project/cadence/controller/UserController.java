@@ -71,4 +71,12 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "No token provided", null));
     }
+
+    @GetMapping(path = "/isAdmin")
+    public ResponseEntity<Boolean> isAdmin(@NotNull HttpServletRequest request) {
+        if (jwtService.checkIfAdminFromHttpRequest(request)) {
+            return ResponseEntity.status(HttpStatus.OK).body(true);
+        }
+        return ResponseEntity.status(HttpStatus.OK).body(false);
+    }
 }

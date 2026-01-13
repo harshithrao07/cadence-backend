@@ -9,5 +9,4 @@ import java.util.Set;
 
 @Repository
 public interface PlaylistRepository extends CrudRepository<Playlist, String> {
-    Set<Optional<Playlist>> findByUserId(String userId);
 }

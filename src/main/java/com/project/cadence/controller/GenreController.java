@@ -22,7 +22,7 @@ public class GenreController {
     private final GenreService genreService;
     private final JwtService jwtService;
 
-    @PostMapping("/admin/add")
+    @PostMapping("/add")
     public ResponseEntity<ApiResponseDTO<String>> addNewSong(HttpServletRequest request, @Validated @RequestBody NewGenreDTO newGenreDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return genreService.addNewGenre(newGenreDTO.type());
@@ -31,7 +31,7 @@ public class GenreController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres() {
-        return genreService.getAllGenres();
+    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres(@RequestParam(required = false) String key) {
+        return genreService.getAllGenres(key);
     }
 }

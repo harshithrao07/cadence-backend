@@ -3,7 +3,7 @@ package com.project.cadence.service;
 import com.project.cadence.model.Role;
 import com.project.cadence.model.InvalidatedToken;
 import com.project.cadence.repository.JwtRepository;
-import com.project.cadence.utility.TokenType;
+import com.project.cadence.auth.TokenType;
 import jakarta.annotation.Nonnull;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -51,10 +51,12 @@ public class JwtService {
         long exp = payloadJson.optLong("exp", 0);
         long iat = payloadJson.optLong("iat", 0);
 
-        Optional<InvalidatedToken> invalidatedToken = jwtRepository.findById(extractEmailForPayload(payload));
-        if (invalidatedToken.isPresent() && iat <= invalidatedToken.get().getInvalidatedTokenTime()) {
-            return true;
-        }
+//        for invalidated tokens
+//        Optional<InvalidatedToken> invalidatedToken = jwtRepository.findById(extractEmailForPayload(payload));
+//        if (invalidatedToken.isPresent() && iat <= invalidatedToken.get().getInvalidatedTokenTime()) {
+//            return true;
+//        }
+
         return System.currentTimeMillis() / 1000 >= exp;
     }
 

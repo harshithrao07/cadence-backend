@@ -1,16 +1,14 @@
 package com.project.cadence.service;
 
-import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.cadence.dto.ApiResponseDTO;
+import com.project.cadence.dto.artist.ArtistPreviewDTO;
 import com.project.cadence.dto.artist.TrackArtistInfoDTO;
+import com.project.cadence.dto.genre.GenrePreviewDTO;
 import com.project.cadence.dto.record.TrackRecordInfoDTO;
-import com.project.cadence.dto.song.EachNewSongDTO;
-import com.project.cadence.dto.song.NewSongsDTO;
-import com.project.cadence.dto.song.TrackPreviewDTO;
-import com.project.cadence.dto.song.UpdateSongDTO;
+import com.project.cadence.dto.song.*;
 import com.project.cadence.model.*;
 import com.project.cadence.model.Record;
 import com.project.cadence.repository.ArtistRepository;
@@ -21,16 +19,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.OutputStream;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -45,7 +38,7 @@ public class SongService {
     private final RestClient restClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ResponseEntity<ApiResponseDTO<String>> addNewSongs(NewSongsDTO newSongsDTO) {
+    public ResponseEntity<ApiResponseDTO<List<AddSongResponseDTO>>> addNewSongs(NewSongsDTO newSongsDTO) {
         try {
             String recordId = newSongsDTO.recordId();
             Optional<Record> record = recordRepository.findById(recordId);
@@ -61,6 +54,7 @@ public class SongService {
                 }
             }
 
+            List<AddSongResponseDTO> addSongResponseDTOList = new ArrayList<>();
             if (!eachNewSongDTOS.isEmpty()) {
                 for (EachNewSongDTO eachNewSongDTO : eachNewSongDTOS) {
                     if (record.get().getRecordType().equals(RecordType.SINGLE) && !record.get().getTitle().equals(eachNewSongDTO.title())) {
@@ -76,51 +70,46 @@ public class SongService {
                         genres.add(genre.get());
                     }
 
-                    Set<Artist> featureArtists = new HashSet<>();
-                    if (eachNewSongDTO.featureIds() != null) {
-                        for (String artistId : eachNewSongDTO.featureIds()) {
+                    Set<Artist> songArtists = new HashSet<>();
+                    if (eachNewSongDTO.artistIds() != null) {
+                        for (String artistId : eachNewSongDTO.artistIds()) {
                             Artist artist = artistRepository.findById(artistId).orElse(null);
                             if (artist == null) {
-                                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The feature artist with id as " + artistId + " does not exist", null));
+                                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The artist with id as " + artistId + " does not exist", null));
                             }
-
-                            if (record.get().getArtists().contains(artist)) {
-                                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, artist.getName() + " is the main artist and cannot be a feature", null));
-                            }
-                            featureArtists.add(artist);
+                            songArtists.add(artist);
                         }
                     }
 
-                    if (!awsService.findByName(eachNewSongDTO.songUrl())) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, eachNewSongDTO.title() + " track has not been uploaded to S3 yet", null));
+                    boolean isSubset = new HashSet<>(songArtists).containsAll(record.get().getArtists());
+                    if (!isSubset) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Not all artists of the record is there in the song", null));
                     }
 
                     Song song = Song.builder()
                             .title(eachNewSongDTO.title())
-                            .songUrl(eachNewSongDTO.songUrl())
                             .totalDuration(eachNewSongDTO.totalDuration())
                             .coverUrl(record.get().getCoverUrl())
-                            .recordId(record.get().getId())
+                            .record(record.get())
                             .genres(genres)
+                            .order(eachNewSongDTO.order())
+                            .coverUrl(eachNewSongDTO.coverUrl())
                             .build();
 
                     Song savedSong = songRepository.save(song);
 
-                    Set<Artist> artists = record.get().getArtists();
-                    for (Artist artist : artists) {
+                    for (Artist artist : songArtists) {
                         artist.getArtistSongs().add(savedSong);
                     }
-                    artistRepository.saveAll(artists);
-
-                    for (Artist artist : featureArtists) {
-                        artist.getFeatureSongs().add(savedSong);
-                    }
-                    artistRepository.saveAll(featureArtists);
+                    artistRepository.saveAll(songArtists);
 
                     record.get().getSongs().add(savedSong);
                     recordRepository.save(record.get());
+
+                    AddSongResponseDTO addSongResponseDTO = new AddSongResponseDTO(song.getId(), song.getTitle());
+                    addSongResponseDTOList.add(addSongResponseDTO);
                 }
-                return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Songs added successfully for " + record.get().getTitle(), recordId));
+                return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "Songs added successfully for " + record.get().getTitle(), addSongResponseDTOList));
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Songs cannot be empty", null));
             }
@@ -137,7 +126,7 @@ public class SongService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Song with the given ID does not exist", null));
             }
 
-            Record record = recordRepository.findById(song.getRecordId()).orElse(null);
+            Record record = recordRepository.findById(song.getRecord().getId()).orElse(null);
             if (record == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Song is not tagged to any record", null));
             }
@@ -146,20 +135,6 @@ public class SongService {
                 song.setTitle(updateSongDTO.title().get());
                 if (record.getRecordType().equals(RecordType.SINGLE)) {
                     record.setTitle(updateSongDTO.title().get());
-                }
-            }
-
-            if (updateSongDTO.songUrl().isPresent()) {
-                if (!updateSongDTO.songUrl().get().equals(song.getSongUrl())) {
-                    if (awsService.findByName(song.getSongUrl())) {
-                        awsService.deleteObject(song.getSongUrl());
-                    }
-
-                    if (!awsService.findByName(updateSongDTO.songUrl().get())) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, song.getTitle() + " track has not been uploaded to S3 yet", null));
-                    } else {
-                        song.setSongUrl(updateSongDTO.songUrl().get());
-                    }
                 }
             }
 
@@ -183,28 +158,34 @@ public class SongService {
                 song.setGenres(genres);
             }
 
-            Set<Artist> featureArtists = new HashSet<>();
-            if (updateSongDTO.featureIds().isPresent()) {
-                for (String artistId : updateSongDTO.featureIds().get()) {
+            Set<Artist> songArtists = new HashSet<>();
+            if (updateSongDTO.artistIds().isPresent()) {
+                for (String artistId : updateSongDTO.artistIds().get()) {
                     Optional<Artist> artist = artistRepository.findById(artistId);
                     if (artist.isEmpty()) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The feature artist with id as " + artistId + " does not exist", null));
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The artist with id as " + artistId + " does not exist", null));
                     }
-
-                    if (record.getArtists().contains(artist.get())) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, artist.get().getName() + " is the main artist and cannot be a feature", null));
-                    }
-                    featureArtists.add(artist.get());
+                    songArtists.add(artist.get());
                 }
-                Set<Artist> oldFeatureArtists = song.getFeatures();
-                oldFeatureArtists.forEach(oldFeatureArtist -> oldFeatureArtist.getFeatureSongs().remove(song));
-                artistRepository.saveAll(oldFeatureArtists);
-                song.setFeatures(featureArtists);
+
+                boolean isSubset = new HashSet<>(songArtists).containsAll(record.getArtists());
+                if (!isSubset) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Not all artists of the record is there in the song", null));
+                }
+
+                Set<Artist> oldArtists = song.getCreatedBy();
+                oldArtists.forEach(oldArtist -> oldArtist.getArtistSongs().remove(song));
+                artistRepository.saveAll(oldArtists);
+                song.setCreatedBy(songArtists);
+            }
+
+            if (updateSongDTO.coverUrl().isPresent()) {
+                song.setCoverUrl(updateSongDTO.coverUrl().get());
             }
 
             Song updatedSong = songRepository.save(song);
-            featureArtists.forEach(featureArtist -> featureArtist.getFeatureSongs().add(updatedSong));
-            artistRepository.saveAll(featureArtists);
+            songArtists.forEach(songArtist -> songArtist.getArtistSongs().add(updatedSong));
+            artistRepository.saveAll(songArtists);
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully updated the song", songId));
         } catch (Exception e) {
@@ -223,8 +204,8 @@ public class SongService {
             Set<Artist> artists = song.getCreatedBy();
             artists.forEach(artist -> artist.getArtistSongs().remove(song));
 
-            Set<Artist> featureArtists = song.getFeatures();
-            featureArtists.forEach(featureArtist -> featureArtist.getFeatureSongs().remove(song));
+            Set<Artist> songArtists = song.getCreatedBy();
+            songArtists.forEach(songArtist -> songArtist.getArtistSongs().remove(song));
 
             Set<User> likedByUsers = song.getLikedBy();
             likedByUsers.forEach(likedByUser -> likedByUser.getLikedSongs().remove(song));
@@ -232,7 +213,7 @@ public class SongService {
             Set<Playlist> playlistsAddedTo = song.getPlaylists();
             playlistsAddedTo.forEach(playlist -> playlist.getSongs().remove(song));
 
-            Record record = recordRepository.findById(song.getRecordId()).orElse(null);
+            Record record = recordRepository.findById(song.getRecord().getId()).orElse(null);
             if (record == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Song is not tagged to any record", null));
             }
@@ -266,16 +247,13 @@ public class SongService {
             String eachRecordId = "";
             for (Song song : songs) {
                 Set<Artist> artists = song.getCreatedBy();
-                Set<Artist> features = song.getFeatures();
-                Set<Artist> combinedArtists = new LinkedHashSet<>();
-                combinedArtists.addAll(artists);
-                combinedArtists.addAll(features);
+                Set<Artist> combinedArtists = new LinkedHashSet<>(artists);
 
                 Set<TrackArtistInfoDTO> trackArtistInfoDTOS = new LinkedHashSet<>(); // LinkedHashSet maintains insertion order
                 combinedArtists.forEach(artist -> trackArtistInfoDTOS.add(objectMapper.convertValue(artist, TrackArtistInfoDTO.class)));
 
-                if (record == null || !eachRecordId.equals(song.getRecordId())) {
-                    eachRecordId = song.getRecordId();
+                if (record == null || !eachRecordId.equals(song.getRecord().getId())) {
+                    eachRecordId = song.getRecord().getId();
                     record = recordRepository.findById(eachRecordId).orElse(null);
                     if (record == null) {
                         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
@@ -290,6 +268,7 @@ public class SongService {
                         trackPreviewDTO.title(),
                         trackPreviewDTO.totalDuration(),
                         trackPreviewDTO.coverUrl(),
+                        songRepository.getTotalPlaysForSong(song.getId()),
                         trackArtistInfoDTOS,
                         trackRecordInfoDTO
                 );
@@ -312,15 +291,12 @@ public class SongService {
 
             Set<TrackArtistInfoDTO> trackArtistInfoDTOS = new LinkedHashSet<>();
             Set<Artist> artists = song.getCreatedBy();
-            Set<Artist> featureArtists = song.getFeatures();
 
-            Set<Artist> combinedArtists = new LinkedHashSet<>();
-            combinedArtists.addAll(artists);
-            combinedArtists.addAll(featureArtists);
+            Set<Artist> combinedArtists = new LinkedHashSet<>(artists);
 
             combinedArtists.forEach(artist -> trackArtistInfoDTOS.add(objectMapper.convertValue(artist, TrackArtistInfoDTO.class)));
 
-            Record record = recordRepository.findById(song.getRecordId()).orElse(null);
+            Record record = recordRepository.findById(song.getRecord().getId()).orElse(null);
             if (record == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
             }
@@ -332,6 +308,7 @@ public class SongService {
                     trackPreviewDTO.title(),
                     trackPreviewDTO.totalDuration(),
                     trackPreviewDTO.coverUrl(),
+                    songRepository.getTotalPlaysForSong(songId),
                     trackArtistInfoDTOS,
                     trackRecordInfoDTO
             );
@@ -379,5 +356,47 @@ public class SongService {
             }
         };
         return stream;
+    }
+
+    public ResponseEntity<ApiResponseDTO<List<SongInRecordDTO>>> getSongsByRecord(String recordId) {
+        try {
+            List<Song> songs = songRepository.findByRecordIdWithArtistsAndGenres(recordId);
+            List<SongInRecordDTO> songDTOS = new ArrayList<>();
+            for (Song song : songs) {
+                List<ArtistPreviewDTO> artistPreviewDTOS =
+                        song.getCreatedBy()
+                                .stream()
+                                .map(artist -> new ArtistPreviewDTO(
+                                        artist.getId(),
+                                        artist.getName(),
+                                        artist.getProfileUrl()
+                                ))
+                                .toList();
+
+                List<GenrePreviewDTO> genrePreviewDTOS =
+                        song.getGenres()
+                                .stream()
+                                .map(genre -> new GenrePreviewDTO(
+                                        genre.getId(),
+                                        genre.getType()
+                                ))
+                                .toList();
+
+                songDTOS.add(new SongInRecordDTO(
+                        song.getId(),
+                        song.getTitle(),
+                        song.getTotalDuration(),
+                        song.getCoverUrl(),
+                        artistPreviewDTOS,
+                        genrePreviewDTOS,
+                        song.getOrder()
+                ));
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved the songs", songDTOS));
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
     }
 }

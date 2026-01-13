@@ -8,17 +8,23 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Table(name = "artist")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class Artist {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private String id;
 
     @Column(nullable = false, unique = true)
+    @ToString.Include
     private String name;
 
     @Column(name = "profile_url")
@@ -26,37 +32,35 @@ public class Artist {
 
     private String description;
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @Column(
+            name = "followers_count",
+            nullable = false,
+            columnDefinition = "BIGINT DEFAULT 0"
+    )
+    private long followersCount = 0;
+
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
+    )
     @JoinTable(
             name = "artist_records",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "record_id", referencedColumnName = "id")
     )
-    @JsonBackReference
     private Set<Record> artistRecords = new HashSet<>();
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
+    )
     @JoinTable(
             name = "artist_created_songs",
             joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
     )
-    @JsonBackReference
     private Set<Song> artistSongs = new HashSet<>();
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
-    @JoinTable(
-            name = "artist_featured_songs",
-            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
-    )
-    @JsonBackReference
-    private Set<Song> featureSongs = new HashSet<>();
-
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "artistFollowing")
+    @ManyToMany(mappedBy = "artistFollowing", fetch = FetchType.LAZY)
     private Set<User> userFollowers = new HashSet<>();
 }

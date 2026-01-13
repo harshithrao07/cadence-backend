@@ -5,7 +5,8 @@ import com.project.cadence.dto.auth.*;
 import com.project.cadence.model.Role;
 import com.project.cadence.model.User;
 import com.project.cadence.repository.UserRepository;
-import com.project.cadence.utility.TokenType;
+import com.project.cadence.auth.TokenType;
+import com.project.cadence.utility.Utils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,11 +35,19 @@ public class AuthenticationService {
                         .body(new ApiResponseDTO<>(false, "A user with the given email already exists", null));
             }
 
+            String password = registerRequestDTO.password();
+            if (password.isBlank() ||
+                    password.length() < 10 ||
+                    !password.matches(".*([0-9]|[!@#$%^&*(),.?\":{}|<>]).*")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiResponseDTO<>(false, "Password must be at least 10 characters long and contain at least one special character", null));
+            }
+            Role role = Role.ADMIN;
             User user = User.builder()
                     .name(registerRequestDTO.name())
                     .email(registerRequestDTO.email())
-                    .password(passwordEncoder.encode(registerRequestDTO.password()))
-                    .role(Role.USER)
+                    .password(passwordEncoder.encode(password))
+                    .role(role)
                     .dateOfBirth(registerRequestDTO.dateOfBirth())
                     .build();
 
@@ -49,7 +58,7 @@ public class AuthenticationService {
 
             String accessToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.access);
             String refreshToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "User registered successfully", new AuthenticationResponseDTO(savedUser.getId(), accessToken, refreshToken)));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "User registered successfully", new AuthenticationResponseDTO(savedUser.getId(), accessToken, refreshToken)));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
@@ -87,19 +96,19 @@ public class AuthenticationService {
 
             String expectedSignature = jwtService.generateSignature(header, payload);
             if (!tokenSignature.equals(expectedSignature)) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Token integrity verification failed", null));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Token integrity verification failed", null));
             }
 
             String userEmail = jwtService.extractEmailForPayload(payload);
-            if (userEmail == null || userEmail.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Unable to extract user email from token", null));
+            if (userEmail == null || userEmail.isEmpty() || !userRepository.existsByEmail(userEmail)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Unable to extract user email from token", null));
             }
 
             Role role;
             try {
                 role = Role.valueOf(jwtService.extractRoleForPayload(payload));
             } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Unable to extract the user role from token", null));
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Unable to extract the user role from token", null));
             }
 
             if (jwtService.isTokenExpired(payload)) {

@@ -32,18 +32,27 @@ public class GenreService {
                     .build();
             Genre savedGenre = genreRepository.save(genre);
 
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully created a new genre", savedGenre.getId()));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "Successfully created a new genre", savedGenre.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres() {
+    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres(String key) {
         try {
-            List<Genre> genres = genreRepository.findAll().stream().toList();
+            List<Genre> genres;
+
+            if (key == null || key.isBlank()) {
+                genres = genreRepository.findAll();
+            } else {
+                genres = genreRepository.searchByKey(key.trim());
+            }
             List<GenrePreviewDTO> genrePreviewDTOS = new ArrayList<>();
-            genres.forEach(genre -> genrePreviewDTOS.add(objectMapper.convertValue(genre, GenrePreviewDTO.class)));
+            genres.forEach(genre -> genrePreviewDTOS.add(new GenrePreviewDTO(
+                    genre.getId(),
+                    genre.getType()
+            )));
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all genres", genrePreviewDTOS));
         } catch (Exception e) {

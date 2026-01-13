@@ -7,17 +7,23 @@ import lombok.*;
 import java.util.*;
 
 @Entity
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "record")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString(onlyExplicitlyIncluded = true)
 public class Record {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
+    @ToString.Include
     private String id;
 
     @Column(nullable = false)
+    @ToString.Include
     private String title;
 
     @Column(name = "release_timestamp")
@@ -30,12 +36,10 @@ public class Record {
     @Column(name = "record_type")
     private RecordType recordType;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JoinColumn(name = "record_id", referencedColumnName = "id")
     private Set<Song> songs = new HashSet<>();
 
-    @EqualsAndHashCode.Exclude
-    @ManyToMany(mappedBy = "artistRecords")
-    @JsonManagedReference
+    @ManyToMany(mappedBy = "artistRecords", fetch = FetchType.LAZY)
     private Set<Artist> artists = new HashSet<>();
 }

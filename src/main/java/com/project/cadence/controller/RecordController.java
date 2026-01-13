@@ -24,7 +24,7 @@ public class RecordController {
     private final JwtService jwtService;
     private final RecordService recordService;
 
-    @PostMapping("/admin/add")
+    @PostMapping("/add")
     public ResponseEntity<ApiResponseDTO<String>> addNewRecord(HttpServletRequest request, @Validated @RequestBody NewRecordDTO newRecordDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return recordService.addNewRecord(newRecordDTO);
@@ -32,7 +32,7 @@ public class RecordController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @PutMapping("/admin/update/{recordId}")
+    @PutMapping("/update/{recordId}")
     public ResponseEntity<ApiResponseDTO<String>> updateExistingRecord(HttpServletRequest request, @Validated @RequestBody UpdateRecordDTO updateRecordDTO, @PathVariable("recordId") String recordId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return recordService.updateExistingRecord(updateRecordDTO, recordId);
