@@ -40,6 +40,12 @@ public class Record {
     @JoinColumn(name = "record_id", referencedColumnName = "id")
     private Set<Song> songs = new HashSet<>();
 
-    @ManyToMany(mappedBy = "artistRecords", fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "artist_records",
+            joinColumns = @JoinColumn(name = "record_id"),
+            inverseJoinColumns = @JoinColumn(name = "artist_id")
+    )
     private Set<Artist> artists = new HashSet<>();
+
 }

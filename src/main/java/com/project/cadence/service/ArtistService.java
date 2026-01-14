@@ -5,12 +5,11 @@ import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.artist.*;
 import com.project.cadence.dto.record.RecordPreviewDTO;
 import com.project.cadence.dto.song.SongsInArtistProfileDTO;
-import com.project.cadence.dto.song.TrackPreviewDTO;
 import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.model.*;
 import com.project.cadence.model.Record;
 import com.project.cadence.repository.ArtistRepository;
-import com.project.cadence.repository.RecordRepository;
+import com.project.cadence.repository.SongRepository;
 import com.project.cadence.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +20,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.net.URL;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 @Slf4j
 @Service
@@ -34,7 +31,7 @@ import java.util.stream.StreamSupport;
 public class ArtistService {
     private final UserRepository userRepository;
     private final ArtistRepository artistRepository;
-    private final RecordRepository recordRepository;
+    private final SongRepository songRepository;
     private final AwsService awsService;
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -59,11 +56,27 @@ public class ArtistService {
                     record.getTitle(),
                     record.getReleaseTimestamp(),
                     record.getCoverUrl(),
-                    record.getRecordType()
+                    record.getRecordType(),
+                    new ArrayList<>()
             )));
 
             // Fetch popular songs
-            List<SongsInArtistProfileDTO> popularSongs = artistRepository.findTopSongsForArtist(artistId, PageRequest.of(0, 10));
+            List<SongsInArtistProfileDTO> popularSongs =
+                    artistRepository.findTopSongsForArtist(artistId, PageRequest.of(0, 10));
+
+            for (SongsInArtistProfileDTO song : popularSongs) {
+                Set<Artist> createdBy = songRepository.findArtistsBySongId(song.songId());
+
+                List<ArtistPreviewDTO> artistPreviewDTOS = createdBy.stream()
+                        .map(a -> new ArtistPreviewDTO(
+                                a.getId(),
+                                a.getName(),
+                                a.getProfileUrl()
+                        ))
+                        .toList();
+
+                song.artists().addAll(artistPreviewDTOS);
+            }
 
             Instant fromDate = Instant.now().minus(30, ChronoUnit.DAYS);
 

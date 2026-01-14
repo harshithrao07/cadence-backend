@@ -39,15 +39,7 @@ public class Artist {
     )
     private long followersCount = 0;
 
-    @ManyToMany(
-            fetch = FetchType.LAZY,
-            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
-    )
-    @JoinTable(
-            name = "artist_records",
-            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "record_id", referencedColumnName = "id")
-    )
+    @ManyToMany(mappedBy = "artists", fetch = FetchType.LAZY)
     private Set<Record> artistRecords = new HashSet<>();
 
     @ManyToMany(

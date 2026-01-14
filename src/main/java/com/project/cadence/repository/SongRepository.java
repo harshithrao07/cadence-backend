@@ -1,5 +1,6 @@
 package com.project.cadence.repository;
 
+import com.project.cadence.model.Artist;
 import com.project.cadence.model.Song;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -29,5 +30,12 @@ public interface SongRepository extends CrudRepository<Song, String> {
 """)
     List<Song> findByRecordIdWithArtistsAndGenres(@Param("recordId") String recordId);
 
+    @Query("""
+    SELECT a
+    FROM Song s
+    JOIN s.createdBy a
+    WHERE s.id = :songId
+""")
+    Set<Artist> findArtistsBySongId(@Param("songId") String songId);
 
 }

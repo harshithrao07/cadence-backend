@@ -142,25 +142,42 @@ public class AwsService {
     @Async
     public CompletableFuture<FileUploadResult> uploadFileAsync(Part part) {
         try {
-            String name = part.getSubmittedFileName();
-            String[] parts = name.split(" ");
-            if (parts.length != 4) {
-                return null;
+            String submittedName = part.getSubmittedFileName();
+            String[] nameParts = submittedName.split(" ");
+
+            if (nameParts.length != 4) {
+                throw new IllegalArgumentException("Invalid file naming format");
             }
 
-            String tableName = parts[0];
-            String columnName = parts[1];
-            String primaryKey = parts[2];
-            String extension = parts[3];
+            String tableName = nameParts[0];
+            String columnName = nameParts[1];
+            String primaryKey = nameParts[2];
+            String extension = nameParts[3];
 
-            String fileName = tableName + "/" + columnName + "/" + primaryKey + "." + extension;
+            String objectKey = tableName + "/" + columnName + "/" + primaryKey + "." + extension;
 
-            // Upload file
-            amazonS3.putObject(s3BucketName, fileName, part.getInputStream(), null);
-            log.info("File '{}' uploaded to bucket '{}'", fileName, s3BucketName);
+            /* --------- CHECK & DELETE EXISTING FILE --------- */
+            if (amazonS3.doesObjectExist(s3BucketName, objectKey)) {
+                amazonS3.deleteObject(s3BucketName, objectKey);
+                log.info("Existing file deleted: {}/{}", s3BucketName, objectKey);
+            }
 
-            // Return the file URL
-            String fileUrl = amazonS3.getUrl(s3BucketName, fileName).toString();
+            /* --------- UPLOAD NEW FILE --------- */
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(part.getSize());
+            metadata.setContentType(part.getContentType());
+
+            amazonS3.putObject(
+                    s3BucketName,
+                    objectKey,
+                    part.getInputStream(),
+                    metadata
+            );
+
+            log.info("File uploaded successfully: {}/{}", s3BucketName, objectKey);
+
+            String fileUrl = amazonS3.getUrl(s3BucketName, objectKey).toString();
+
             return CompletableFuture.completedFuture(
                     new FileUploadResult(
                             tableName,
@@ -169,9 +186,11 @@ public class AwsService {
                             fileUrl
                     )
             );
-        } catch (IOException e) {
-            log.error("Error uploading file: {}", e.getMessage(), e);
-            return null;
+
+        } catch (Exception e) {
+            log.error("Error uploading file", e);
+            return CompletableFuture.failedFuture(e);
         }
     }
+
 }

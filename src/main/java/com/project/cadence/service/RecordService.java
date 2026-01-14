@@ -1,8 +1,7 @@
 package com.project.cadence.service;
 
-import com.amazonaws.HttpMethod;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.cadence.dto.ApiResponseDTO;
+import com.project.cadence.dto.artist.ArtistPreviewDTO;
 import com.project.cadence.dto.record.NewRecordDTO;
 import com.project.cadence.dto.record.RecordPreviewDTO;
 import com.project.cadence.dto.record.UpdateRecordDTO;
@@ -14,11 +13,12 @@ import com.project.cadence.repository.SongRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -29,8 +29,6 @@ public class RecordService {
     private final ArtistRepository artistRepository;
     private final SongRepository songRepository;
     private final AwsService awsService;
-    private final RestClient restClient;
-    ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<ApiResponseDTO<String>> addNewRecord(NewRecordDTO newRecordDTO) {
         try {
@@ -56,11 +54,6 @@ public class RecordService {
 
             Record savedRecord = recordRepository.save(record);
 
-            for (Artist artist : artists) {
-                artist.getArtistRecords().add(savedRecord);
-            }
-
-            artistRepository.saveAll(artists);
             return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "Added a new record successfully", savedRecord.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
@@ -150,16 +143,28 @@ public class RecordService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist not given in the payload", null));
             }
 
-            String recordTypeString = (recordType != null) ? recordType.toString() : null;
-            Set<Record> records = recordRepository.findArtistRecordsByArtistId(artistId, recordTypeString);
+            Set<Record> records = recordRepository.findArtistRecordsByArtistId(artistId, recordType);
+
             Set<RecordPreviewDTO> recordPreviewDTOS = new HashSet<>();
-            records.forEach(record -> recordPreviewDTOS.add(new RecordPreviewDTO(
-                    record.getId(),
-                    record.getTitle(),
-                    record.getReleaseTimestamp(),
-                    record.getCoverUrl(),
-                    record.getRecordType()
-            )));
+            records.forEach(record -> {
+                List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
+                for (Artist artist : record.getArtists()) {
+                    artistPreviewDTOS.add(new ArtistPreviewDTO(
+                            artist.getId(),
+                            artist.getName(),
+                            artist.getProfileUrl()
+                    ));
+                }
+
+                recordPreviewDTOS.add(new RecordPreviewDTO(
+                        record.getId(),
+                        record.getTitle(),
+                        record.getReleaseTimestamp(),
+                        record.getCoverUrl(),
+                        record.getRecordType(),
+                        artistPreviewDTOS
+                ));
+            });
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved records", recordPreviewDTOS));
         } catch (Exception e) {
@@ -170,22 +175,40 @@ public class RecordService {
 
     public ResponseEntity<ApiResponseDTO<RecordPreviewDTO>> getRecordById(String recordId) {
         try {
-            Record record = recordRepository.findById(recordId).orElse(null);
+            Record record = recordRepository.findByIdWithArtists(recordId).orElse(null);
+
             if (record == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponseDTO<>(false, "Record not found", null));
+            }
+
+            List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
+            for (Artist artist : record.getArtists()) {
+                artistPreviewDTOS.add(new ArtistPreviewDTO(
+                        artist.getId(),
+                        artist.getName(),
+                        artist.getProfileUrl()
+                ));
             }
 
             RecordPreviewDTO recordPreviewDTO = new RecordPreviewDTO(
-                    recordId,
+                    record.getId(),
                     record.getTitle(),
                     record.getReleaseTimestamp(),
                     record.getCoverUrl(),
-                    record.getRecordType()
+                    record.getRecordType(),
+                    artistPreviewDTOS
             );
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved record " + recordId, recordPreviewDTO));
+
+            return ResponseEntity.ok(
+                    new ApiResponseDTO<>(true, "Successfully retrieved record " + recordId, recordPreviewDTO)
+            );
+
         } catch (Exception e) {
-            log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+            log.error("An exception has occurred", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
+
 }
