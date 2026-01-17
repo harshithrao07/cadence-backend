@@ -160,32 +160,46 @@ public class SongService {
 
             Set<Artist> songArtists = new HashSet<>();
             if (updateSongDTO.artistIds().isPresent()) {
+
+                Set<Artist> newArtists = new HashSet<>();
+
                 for (String artistId : updateSongDTO.artistIds().get()) {
-                    Optional<Artist> artist = artistRepository.findById(artistId);
-                    if (artist.isEmpty()) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The artist with id as " + artistId + " does not exist", null));
-                    }
-                    songArtists.add(artist.get());
+                    Artist artist = artistRepository.findById(artistId)
+                            .orElseThrow(() ->
+                                    new IllegalArgumentException("Artist not found: " + artistId)
+                            );
+                    newArtists.add(artist);
                 }
 
-                boolean isSubset = new HashSet<>(songArtists).containsAll(record.getArtists());
-                if (!isSubset) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Not all artists of the record is there in the song", null));
+                // ✅ Correct validation
+                if (!record.getArtists().containsAll(newArtists)) {
+                    return ResponseEntity.badRequest().body(
+                            new ApiResponseDTO<>(false,
+                                    "All song artists must belong to the record",
+                                    null)
+                    );
                 }
 
-                Set<Artist> oldArtists = song.getCreatedBy();
-                oldArtists.forEach(oldArtist -> oldArtist.getArtistSongs().remove(song));
-                artistRepository.saveAll(oldArtists);
-                song.setCreatedBy(songArtists);
+                // ✅ DETACH safely (defensive copy)
+                for (Artist oldArtist : new HashSet<>(song.getCreatedBy())) {
+                    oldArtist.getArtistSongs().remove(song);
+                }
+
+                // ✅ ATTACH on OWNING SIDE
+                for (Artist newArtist : newArtists) {
+                    newArtist.getArtistSongs().add(song);
+                }
+
+                // ✅ Sync inverse side (memory only)
+                song.setCreatedBy(newArtists);
             }
+
 
             if (updateSongDTO.coverUrl().isPresent()) {
                 song.setCoverUrl(updateSongDTO.coverUrl().get());
             }
 
-            Song updatedSong = songRepository.save(song);
-            songArtists.forEach(songArtist -> songArtist.getArtistSongs().add(updatedSong));
-            artistRepository.saveAll(songArtists);
+            songRepository.save(song);
 
             return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully updated the song", songId));
         } catch (Exception e) {
@@ -327,12 +341,13 @@ public class SongService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
 
-            String fileName = song.getSongUrl();
-            if (!awsService.findByName(fileName)) {
+            String songUrl = song.getSongUrl();
+            String objectKey = awsService.extractKeyFromUrl(songUrl);
+            if (!awsService.findByName(objectKey)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
 
-            S3Object s3Object = awsService.getObject(fileName);
+            S3Object s3Object = awsService.getObject(objectKey);
             StreamingResponseBody stream = getStreamingResponseBody(s3Object);
             return ResponseEntity.status(HttpStatus.OK).body(stream);
         } catch (Exception e) {
@@ -361,6 +376,7 @@ public class SongService {
     public ResponseEntity<ApiResponseDTO<List<SongInRecordDTO>>> getSongsByRecord(String recordId) {
         try {
             List<Song> songs = songRepository.findByRecordIdWithArtistsAndGenres(recordId);
+            Optional<Record> record = recordRepository.findById(recordId);
             List<SongInRecordDTO> songDTOS = new ArrayList<>();
             for (Song song : songs) {
                 List<ArtistPreviewDTO> artistPreviewDTOS =
@@ -386,7 +402,7 @@ public class SongService {
                         song.getId(),
                         song.getTitle(),
                         song.getTotalDuration(),
-                        song.getCoverUrl(),
+                        record.map(Record::getCoverUrl).orElse(null),
                         artistPreviewDTOS,
                         genrePreviewDTOS,
                         song.getOrder()

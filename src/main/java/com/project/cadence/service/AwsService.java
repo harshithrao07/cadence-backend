@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -190,6 +191,15 @@ public class AwsService {
         } catch (Exception e) {
             log.error("Error uploading file", e);
             return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    public String extractKeyFromUrl(String songUrl) {
+        try {
+            URI uri = new URI(songUrl);
+            return uri.getPath().substring(1); // removes leading "/"
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid song URL", e);
         }
     }
 
