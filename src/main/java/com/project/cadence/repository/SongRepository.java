@@ -1,12 +1,15 @@
 package com.project.cadence.repository;
 
 import com.project.cadence.model.Artist;
+import com.project.cadence.model.Record;
 import com.project.cadence.model.Song;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public interface SongRepository extends CrudRepository<Song, String> {
@@ -22,13 +25,13 @@ public interface SongRepository extends CrudRepository<Song, String> {
     Long getTotalPlaysForSong(String songId);
 
     @Query("""
-   SELECT DISTINCT s
-   FROM Song s
-   LEFT JOIN FETCH s.createdBy
-   LEFT JOIN FETCH s.genres
-   WHERE s.record.id = :recordId
+    SELECT DISTINCT s
+    FROM Song s
+    LEFT JOIN FETCH s.genres
+    WHERE s.record.id = :recordId
+    ORDER BY s.order
 """)
-    List<Song> findByRecordIdWithArtistsAndGenres(@Param("recordId") String recordId);
+    List<Song> findByRecordIdWithGenres(@Param("recordId") String recordId);
 
     @Query("""
     SELECT a
@@ -38,4 +41,12 @@ public interface SongRepository extends CrudRepository<Song, String> {
 """)
     Set<Artist> findArtistsBySongId(@Param("songId") String songId);
 
+    @Modifying
+    @Query(
+            value = "DELETE FROM artist_created_songs WHERE song_id = :songId",
+            nativeQuery = true
+    )
+    void deleteSongArtists(@Param("songId") String songId);
+
+    List<Song> findByRecordOrderByOrderAsc(Record record);
 }

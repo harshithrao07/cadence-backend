@@ -10,6 +10,7 @@ import com.project.cadence.model.Record;
 import com.project.cadence.repository.ArtistRepository;
 import com.project.cadence.repository.RecordRepository;
 import com.project.cadence.repository.SongRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -30,18 +31,19 @@ public class RecordService {
     private final SongRepository songRepository;
     private final AwsService awsService;
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<String>> addNewRecord(NewRecordDTO newRecordDTO) {
         try {
             if (newRecordDTO.artistIds().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artists cannot be empty", null));
             }
 
-            Set<Artist> artists = new HashSet<>();
+            List<Artist> artists = new ArrayList<>();
             for (String artistId : newRecordDTO.artistIds()) {
-                Artist artist = artistRepository.findById(artistId).orElse(null);
-                if (artist == null) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The artist with id as " + artistId + " does not exist", null));
-                }
+                Artist artist = artistRepository.findById(artistId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException("Artist not found: " + artistId)
+                        );
                 artists.add(artist);
             }
 
@@ -49,8 +51,10 @@ public class RecordService {
                     .title(newRecordDTO.title())
                     .releaseTimestamp(newRecordDTO.releaseTimestamp())
                     .recordType(newRecordDTO.recordType())
-                    .artists(artists)
                     .build();
+
+            record.getArtists().clear();
+            record.getArtists().addAll(artists);
 
             Record savedRecord = recordRepository.save(record);
 
@@ -61,6 +65,7 @@ public class RecordService {
         }
     }
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<String>> updateExistingRecord(UpdateRecordDTO updateRecordDTO, String recordId) {
         try {
             Record record = recordRepository.findById(recordId).orElse(null);
@@ -83,61 +88,53 @@ public class RecordService {
                 record.setReleaseTimestamp(updateRecordDTO.releaseTimestamp().get());
             }
 
-            Set<Artist> artists = new HashSet<>();
             if (updateRecordDTO.artistIds().isPresent()) {
-                if (updateRecordDTO.artistIds().get().isEmpty()) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artists cannot be empty", null));
-                }
+                List<Artist> artists = new ArrayList<>();
 
                 for (String artistId : updateRecordDTO.artistIds().get()) {
-                    Artist artist = artistRepository.findById(artistId).orElse(null);
-                    if (artist == null) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "The artist with id as " + artistId + " does not exist", null));
-                    }
+                    Artist artist = artistRepository.findById(artistId)
+                            .orElseThrow(() ->
+                                    new IllegalArgumentException("Artist not found: " + artistId)
+                            );
                     artists.add(artist);
                 }
-                record.setArtists(artists);
+
+                record.getArtists().clear();
+                record.getArtists().addAll(artists);
             }
 
-            Record updatedRecord = recordRepository.save(record);
-            for (Artist artist : artists) {
-                artist.getArtistRecords().add(updatedRecord);
-            }
-
-            artistRepository.saveAll(artists);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Updated the record successfully", updatedRecord.getId()));
+            recordRepository.save(record);
+            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Updated the record successfully", record.getId()));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
     }
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingRecord(String recordId) {
-        try {
-            Record record = recordRepository.findById(recordId).orElse(null);
-            if (record == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Record not found", null));
+
+        Record record = recordRepository.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Record not found"));
+
+        record.getSongs().forEach(song -> {
+            if (song.getSongUrl() != null) {
+                awsService.deleteObject(awsService.extractKeyFromUrl(song.getSongUrl()));
             }
+        });
 
-            Set<Artist> artists = record.getArtists();
-            artists.forEach(artist -> {
-                artist.getArtistRecords().remove(record);
-                artistRepository.save(artist);
-            });
-
-            if (awsService.findByName(record.getCoverUrl())) {
-                awsService.deleteObject(record.getCoverUrl());
-            }
-
-            recordRepository.deleteById(recordId);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully deleted the record", null));
-        } catch (Exception e) {
-            log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        if (record.getCoverUrl() != null) {
+            awsService.deleteObject(awsService.extractKeyFromUrl(record.getCoverUrl()));
         }
+
+        recordRepository.delete(record);
+
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Successfully deleted the record", null)
+        );
     }
 
-    public ResponseEntity<ApiResponseDTO<Set<RecordPreviewDTO>>> getAllRecordsByArtistId(String artistId, RecordType recordType) {
+    public ResponseEntity<ApiResponseDTO<List<RecordPreviewDTO>>> getAllRecordsByArtistId(String artistId, RecordType recordType) {
         try {
             if (artistId == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist not given in the payload", null));
@@ -145,7 +142,7 @@ public class RecordService {
 
             Set<Record> records = recordRepository.findArtistRecordsByArtistId(artistId, recordType);
 
-            Set<RecordPreviewDTO> recordPreviewDTOS = new HashSet<>();
+            List<RecordPreviewDTO> recordPreviewDTOS = new ArrayList<>();
             records.forEach(record -> {
                 List<ArtistPreviewDTO> artistPreviewDTOS = new ArrayList<>();
                 for (Artist artist : record.getArtists()) {

@@ -36,8 +36,12 @@ public class Record {
     @Column(name = "record_type")
     private RecordType recordType;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "record_id", referencedColumnName = "id")
+    @OneToMany(
+            mappedBy = "record",
+            cascade = CascadeType.REMOVE,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
     private Set<Song> songs = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -46,6 +50,8 @@ public class Record {
             joinColumns = @JoinColumn(name = "record_id"),
             inverseJoinColumns = @JoinColumn(name = "artist_id")
     )
-    private Set<Artist> artists = new HashSet<>();
+    @OrderColumn(name = "artist_order")
+    @Builder.Default
+    private List<Artist> artists = new ArrayList<>();
 
 }

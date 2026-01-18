@@ -6,7 +6,6 @@ import java.util.Optional;
 
 public record NewArtistDTO(
         @NotBlank(message = "Name cannot be empty") String name,
-        Optional<String> profileUrl,
         Optional<String> description
 ) {
 }

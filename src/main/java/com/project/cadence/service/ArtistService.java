@@ -11,6 +11,7 @@ import com.project.cadence.model.Record;
 import com.project.cadence.repository.ArtistRepository;
 import com.project.cadence.repository.SongRepository;
 import com.project.cadence.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -106,6 +107,7 @@ public class ArtistService {
         }
     }
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<String>> addNewArtist(NewArtistDTO newArtistDTO) {
         try {
             if (newArtistDTO.name().isEmpty()) {
@@ -282,7 +284,7 @@ public class ArtistService {
         }
     }
 
-
+    @Transactional
     public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(UpdateArtistDTO updateArtistDTO, String artistId) {
         try {
             Artist artist = artistRepository.findById(artistId).orElse(null);
@@ -290,30 +292,16 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
-            if (updateArtistDTO.name() != null) {
-                if (!updateArtistDTO.name().isBlank()) {
-                    artist.setName(updateArtistDTO.name());
+            if (updateArtistDTO.name().isPresent()) {
+                if (!updateArtistDTO.name().get().isBlank()) {
+                    artist.setName(updateArtistDTO.name().get());
                 } else {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Artist name cannot be empty", null));
                 }
             }
 
-            if (updateArtistDTO.profileUrl() != null) {
-                if (!updateArtistDTO.profileUrl().equals(artist.getProfileUrl()) && !updateArtistDTO.profileUrl().isEmpty()) {
-                    if (!awsService.findByName(updateArtistDTO.profileUrl())) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Updated " + artist.getName() + " profile has not been uploaded to S3 yet", null));
-                    } else {
-                        if (awsService.findByName(artist.getProfileUrl())) {
-                            awsService.deleteObject(artist.getProfileUrl());
-                        }
-
-                        artist.setProfileUrl(updateArtistDTO.profileUrl());
-                    }
-                }
-            }
-
-            if (updateArtistDTO.description() != null) {
-                artist.setDescription(updateArtistDTO.description());
+            if (updateArtistDTO.description().isPresent()) {
+                artist.setDescription(updateArtistDTO.description().get());
             }
 
             Artist updatedArtist = artistRepository.save(artist);
@@ -324,36 +312,33 @@ public class ArtistService {
         }
     }
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(String artistId) {
         try {
             Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
-            if (awsService.findByName(artist.getProfileUrl())) {
-                awsService.deleteObject(artist.getProfileUrl());
+            if (artist.getProfileUrl() != null) {
+                String key = awsService.extractKeyFromUrl(artist.getProfileUrl());
+                if (awsService.findByName(key)) {
+                    awsService.deleteObject(key);
+                }
             }
 
-            Set<Record> records = artist.getArtistRecords();
-            records.forEach(record -> {
-                if (awsService.findByName(record.getCoverUrl())) {
-                    awsService.deleteObject(record.getCoverUrl());
-                }
-            });
+            artistRepository.delete(artist);
 
-            Set<Song> songs = artist.getArtistSongs();
-            songs.forEach(song -> {
-                if (awsService.findByName(song.getSongUrl())) {
-                    awsService.deleteObject(song.getSongUrl());
-                }
-            });
+            return ResponseEntity.ok(
+                    new ApiResponseDTO<>(true, "Successfully deleted artist", null)
+            );
 
-            artistRepository.deleteById(artistId);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully deleted artist", null));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error has occurred in the server", null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponseDTO<>(false, "An error has occurred in the server", null));
         }
     }
+
 }

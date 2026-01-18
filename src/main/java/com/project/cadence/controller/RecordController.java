@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @Validated
@@ -40,7 +41,7 @@ public class RecordController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @DeleteMapping("/admin/delete/{recordId}")
+    @DeleteMapping("/delete/{recordId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingRecord(HttpServletRequest request, @PathVariable("recordId") String recordId) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return recordService.deleteExistingRecord(recordId);
@@ -49,7 +50,7 @@ public class RecordController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponseDTO<Set<RecordPreviewDTO>>> getAllRecordsByArtistId(
+    public ResponseEntity<ApiResponseDTO<List<RecordPreviewDTO>>> getAllRecordsByArtistId(
             @RequestParam String artistId,
             @RequestParam(required = false) RecordType recordType
     ) {

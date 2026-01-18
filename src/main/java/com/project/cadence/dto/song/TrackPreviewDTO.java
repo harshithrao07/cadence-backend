@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.project.cadence.dto.record.TrackRecordInfoDTO;
 import com.project.cadence.dto.artist.TrackArtistInfoDTO;
 
+import java.util.List;
 import java.util.Set;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -13,7 +14,7 @@ public record TrackPreviewDTO(
         Integer totalDuration,
         String coverUrl,
         Long totalPlays,
-        Set<TrackArtistInfoDTO> trackArtistInfo,
+        List<TrackArtistInfoDTO> trackArtistInfo,
         TrackRecordInfoDTO trackRecordInfo
 ) {
 }

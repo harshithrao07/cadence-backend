@@ -3,7 +3,9 @@ package com.project.cadence.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -32,15 +34,23 @@ public class Song {
     @Column(name = "total_duration", nullable = false)
     private int totalDuration;
 
-    @Column(name = "cover_url")
-    private String coverUrl;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "record_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(
+            name = "record_id",
+            nullable = false
+    )
     private Record record;
 
-    @ManyToMany(mappedBy = "artistSongs", fetch = FetchType.LAZY)
-    private Set<Artist> createdBy = new HashSet<>();
+
+    @Builder.Default
+    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "artist_created_songs",
+            joinColumns = @JoinColumn(name = "song_id"),
+            inverseJoinColumns = @JoinColumn(name = "artist_id")
+    )
+    @OrderColumn(name = "artist_order")
+    private List<Artist> createdBy = new ArrayList<>();
 
     @ManyToMany(mappedBy = "likedSongs", fetch = FetchType.LAZY)
     private Set<User> likedBy = new HashSet<>();
@@ -56,6 +66,6 @@ public class Song {
     )
     private Set<Genre> genres = new HashSet<>();
 
-    @Column(name = "track_order", columnDefinition = "INTEGER DEFAULT 1")
+    @Column(name = "track_order", columnDefinition = "INTEGER DEFAULT 0")
     private int order;
 }

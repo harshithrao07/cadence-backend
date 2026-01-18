@@ -1,8 +1,9 @@
 package com.project.cadence.dto.artist;
 
+import java.util.Optional;
+
 public record UpdateArtistDTO(
-        String name,
-        String profileUrl,
-        String description
+        Optional<String> name,
+        Optional<String> description
 ) {
 }

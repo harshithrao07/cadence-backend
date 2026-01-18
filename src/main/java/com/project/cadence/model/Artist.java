@@ -4,7 +4,9 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -42,16 +44,8 @@ public class Artist {
     @ManyToMany(mappedBy = "artists", fetch = FetchType.LAZY)
     private Set<Record> artistRecords = new HashSet<>();
 
-    @ManyToMany(
-            fetch = FetchType.LAZY,
-            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
-    )
-    @JoinTable(
-            name = "artist_created_songs",
-            joinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
-    )
-    private Set<Song> artistSongs = new HashSet<>();
+    @ManyToMany(mappedBy = "createdBy", fetch = FetchType.LAZY)
+    private List<Song> artistSongs = new ArrayList<>();
 
     @ManyToMany(mappedBy = "artistFollowing", fetch = FetchType.LAZY)
     private Set<User> userFollowers = new HashSet<>();

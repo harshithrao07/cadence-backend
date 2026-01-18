@@ -168,6 +168,7 @@ public class AwsService {
             metadata.setContentLength(part.getSize());
             metadata.setContentType(part.getContentType());
 
+            System.out.println("Uploading: " + objectKey);
             amazonS3.putObject(
                     s3BucketName,
                     objectKey,

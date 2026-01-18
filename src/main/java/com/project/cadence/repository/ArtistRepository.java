@@ -23,7 +23,7 @@ public interface ArtistRepository extends JpaRepository<Artist, String> {
         s.id,
         s.title,
         s.totalDuration,
-        s.coverUrl,
+        r.coverUrl,
         COALESCE(SUM(ph.playCount), 0),
         r.id,
         r.title
@@ -37,7 +37,7 @@ public interface ArtistRepository extends JpaRepository<Artist, String> {
         s.id,
         s.title,
         s.totalDuration,
-        s.coverUrl,
+        r.coverUrl,
         r.id,
         r.title
     ORDER BY COALESCE(SUM(ph.playCount), 0) DESC

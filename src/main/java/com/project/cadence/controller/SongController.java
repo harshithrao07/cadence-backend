@@ -24,17 +24,17 @@ public class SongController {
     private final SongService songService;
 
     @PostMapping("/add")
-    public ResponseEntity<ApiResponseDTO<List<AddSongResponseDTO>>> addNewSongs(HttpServletRequest request, @Validated @RequestBody NewSongsDTO newSongsDTO) {
+    public ResponseEntity<ApiResponseDTO<List<AddSongResponseDTO>>> addNewSongs(HttpServletRequest request, @Validated @RequestBody NewSongsDTO newSongsDTO, @RequestParam(required = false, defaultValue = "false") Boolean editMode) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return songService.addNewSongs(newSongsDTO);
+            return songService.addNewSongs(newSongsDTO, editMode);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
 
-    @PutMapping("/update/{songId}")
-    public ResponseEntity<ApiResponseDTO<String>> updateExistingSong(HttpServletRequest request, @Validated @RequestBody UpdateSongDTO updateSongDTO, @PathVariable("songId") String songId) {
+    @PutMapping("/update")
+    public ResponseEntity<ApiResponseDTO<String>> updateExistingSongs(HttpServletRequest request, @Validated @RequestBody List<UpdateSongDTO> updateSongDTOs) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return songService.updateExistingSong(updateSongDTO, songId);
+            return songService.updateExistingSong(updateSongDTOs);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
