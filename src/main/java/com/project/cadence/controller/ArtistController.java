@@ -1,6 +1,7 @@
 package com.project.cadence.controller;
 
 import com.project.cadence.dto.ApiResponseDTO;
+import com.project.cadence.dto.PaginatedResponseDTO;
 import com.project.cadence.dto.artist.*;
 import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.service.ArtistService;
@@ -12,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Set;
 
 @Validated
@@ -23,22 +23,13 @@ public class ArtistController {
     private final JwtService jwtService;
     private final ArtistService artistService;
 
-    @PostMapping(path = "/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewArtist(HttpServletRequest request, @Validated @RequestBody NewArtistDTO newArtistDTO) {
+    @PostMapping(path = "/upsert")
+    public ResponseEntity<ApiResponseDTO<String>> upsertArtist(HttpServletRequest request, @Validated @RequestBody UpsertArtistDTO upsertArtistDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return artistService.addNewArtist(newArtistDTO);
+            return artistService.upsertArtist(upsertArtistDTO);
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
     }
-
-    @PutMapping(path = "/update/{artistId}")
-    public ResponseEntity<ApiResponseDTO<String>> updateExistingArtist(HttpServletRequest request, @Validated @RequestBody UpdateArtistDTO updateArtistDTO, @PathVariable("artistId") String artistId) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return artistService.updateExistingArtist(updateArtistDTO, artistId);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
-    }
-
 
     @DeleteMapping(path = "/delete/{artistId}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
@@ -49,7 +40,7 @@ public class ArtistController {
     }
 
     @GetMapping(path = "/all")
-    public ResponseEntity<ApiResponseDTO<PaginatedAllArtistsResponse>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "24") int size, @RequestParam(required = false) String key) {
+    public ResponseEntity<ApiResponseDTO<PaginatedResponseDTO<ArtistPreviewDTO>>> getAllArtists(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "24") int size, @RequestParam(required = false) String key) {
         return artistService.getAllArtists(page, size, key);
     }
 
@@ -70,16 +61,15 @@ public class ArtistController {
         return artistService.unfollowArtist(artistId, tokenEmail);
     }
 
-    @GetMapping(path = "/{artistId}/is_following")
+    @GetMapping(path = "/{artistId}/isFollowing")
     public ResponseEntity<ApiResponseDTO<Boolean>> isFollowing(HttpServletRequest request, @PathVariable("artistId") String artistId) {
         String tokenEmail = jwtService.getEmailFromHttpRequest(request);
         return artistService.isFollowing(artistId, tokenEmail);
     }
 
     @GetMapping(path = "/{artistId}/followers")
-    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getArtistFollowers(HttpServletRequest request, @PathVariable("artistId") String artistId) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return artistService.getArtistFollowers(artistId, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getArtistFollowers(@PathVariable("artistId") String artistId) {
+        return artistService.getArtistFollowers(artistId);
     }
 
 }

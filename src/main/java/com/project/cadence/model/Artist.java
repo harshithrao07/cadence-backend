@@ -1,12 +1,9 @@
 package com.project.cadence.model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -15,7 +12,12 @@ import java.util.Set;
 @AllArgsConstructor
 @Getter
 @Setter
-@Table(name = "artist")
+@Table(
+        name = "artist",
+        indexes = {
+                @Index(name = "idx_artist_name", columnList = "name")
+        }
+)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class Artist {
@@ -34,19 +36,12 @@ public class Artist {
 
     private String description;
 
-    @Column(
-            name = "followers_count",
-            nullable = false,
-            columnDefinition = "BIGINT DEFAULT 0"
-    )
-    private long followersCount = 0;
+    @Builder.Default
+    @ManyToMany(mappedBy = "artists")
+    private Set<Record> createdRecords = new HashSet<>();
 
-    @ManyToMany(mappedBy = "artists", fetch = FetchType.LAZY)
-    private Set<Record> artistRecords = new HashSet<>();
-
-    @ManyToMany(mappedBy = "createdBy", fetch = FetchType.LAZY)
-    private List<Song> artistSongs = new ArrayList<>();
-
-    @ManyToMany(mappedBy = "artistFollowing", fetch = FetchType.LAZY)
-    private Set<User> userFollowers = new HashSet<>();
+    @Builder.Default
+    @ManyToMany(mappedBy = "artistFollowing")
+    private Set<User> artistFollowers = new HashSet<>();
 }
+

@@ -13,21 +13,29 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "play_history")
+@Table(
+        name = "play_history",
+        indexes = {
+                @Index(name = "idx_play_history_song_id ", columnList = "song_id"),
+                @Index(name = "idx_play_history_user_id_play_count_desc", columnList = "user_id, play_count DESC"),
+                @Index(name = "idx_play_history_user_id_last_played_at_desc", columnList = "user_id, last_played_at DESC"),
+                @Index(name = "idx_play_history_song_id_last_played_at", columnList = "song_id, last_played_at")
+        }
+)
 @ToString(onlyExplicitlyIncluded = true)
 public class PlayHistory {
     @EmbeddedId
     @ToString.Include
     private PlayHistoryId id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @MapsId("userId")
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @MapsId("songId")
-    @JoinColumn(name = "song_id")
+    @JoinColumn(name = "song_id", nullable = false)
     private Song song;
 
     @Column(name = "play_count", nullable = false)

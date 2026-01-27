@@ -5,8 +5,8 @@ import com.project.cadence.dto.artist.ArtistPreviewDTO;
 import java.util.ArrayList;
 import java.util.List;
 
-public record SongsInArtistProfileDTO(
-        String songId,
+public record TopSongsInArtistProfileDTO(
+        String id,
         String title,
         Integer totalDuration,
         String coverUrl,
@@ -16,8 +16,8 @@ public record SongsInArtistProfileDTO(
         List<ArtistPreviewDTO> artists
 ) {
     // JPQL-friendly constructor
-    public SongsInArtistProfileDTO(
-            String songId,
+    public TopSongsInArtistProfileDTO(
+            String id,
             String title,
             Integer totalDuration,
             String coverUrl,
@@ -26,7 +26,7 @@ public record SongsInArtistProfileDTO(
             String recordTitle
     ) {
         this(
-                songId,
+                id,
                 title,
                 totalDuration,
                 coverUrl,

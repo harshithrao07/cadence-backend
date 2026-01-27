@@ -1,8 +1,6 @@
 package com.project.cadence.service;
 
 import com.project.cadence.model.Role;
-import com.project.cadence.model.InvalidatedToken;
-import com.project.cadence.repository.JwtRepository;
 import com.project.cadence.auth.TokenType;
 import jakarta.annotation.Nonnull;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,9 +26,8 @@ public class JwtService {
     @Value("${jwt.secret-key}")
     private String secretKey;
 
-    private final JwtRepository jwtRepository;
-
     Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
+    private final UserService userService;
 
     public SecretKeySpec getSecretKeySpec() {
         return new SecretKeySpec(secretKey.getBytes(), "HS256");
@@ -49,14 +46,6 @@ public class JwtService {
     public boolean isTokenExpired(String payload) {
         JSONObject payloadJson = new JSONObject(payload);
         long exp = payloadJson.optLong("exp", 0);
-        long iat = payloadJson.optLong("iat", 0);
-
-//        for invalidated tokens
-//        Optional<InvalidatedToken> invalidatedToken = jwtRepository.findById(extractEmailForPayload(payload));
-//        if (invalidatedToken.isPresent() && iat <= invalidatedToken.get().getInvalidatedTokenTime()) {
-//            return true;
-//        }
-
         return System.currentTimeMillis() / 1000 >= exp;
     }
 
@@ -91,16 +80,6 @@ public class JwtService {
         return encoder.encodeToString(signatureBytes);
     }
 
-    public InvalidatedToken invalidateAllUserTokens(String email) {
-        if (!jwtRepository.existsById(email)) {
-            InvalidatedToken invalidatedToken = new InvalidatedToken();
-            invalidatedToken.setEmail(email);
-            invalidatedToken.setInvalidatedTokenTime(System.currentTimeMillis() / 1000);
-            return jwtRepository.save(invalidatedToken);
-        }
-        return null;
-    }
-
     private @NotNull String getPayloadFromHttpRequest(@Nonnull HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
@@ -125,10 +104,18 @@ public class JwtService {
 
     public boolean checkIfAdminFromHttpRequest(@NotNull HttpServletRequest request) {
         String payload = getPayloadFromHttpRequest(request);
-        if (!payload.isEmpty()) {
+        String email = getEmailFromHttpRequest(request);
+
+        // 1. Trust token if valid
+        if (!payload.isBlank()) {
             String role = extractRoleForPayload(payload);
-            return Role.valueOf(role).equals(Role.ADMIN);
+            if (role != null && role.equalsIgnoreCase(Role.ADMIN.name())) {
+                return true;
+            }
         }
-        return false;
+
+        // 2. Fallback to DB (revoked role / old token case)
+        return userService.getUserRoleFromRepository(email) == Role.ADMIN;
     }
+
 }

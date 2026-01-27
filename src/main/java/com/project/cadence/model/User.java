@@ -3,9 +3,7 @@ package com.project.cadence.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Getter
@@ -13,7 +11,12 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
+@Table(
+        name = "users",
+        indexes = {
+                @Index(name = "idx_users_email", columnList = "email")
+        }
+)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class User {
@@ -27,70 +30,53 @@ public class User {
     @ToString.Include
     private String email;
 
-    @Column(name = "firstname", nullable = false)
+    @Column(nullable = false)
     private String name;
 
     @Column(nullable = false)
-    private String password;
+    private String passwordHash;
 
     @Column(name = "profile_url")
     private String profileUrl;
 
-    @Column(name = "date_of_birth")
-    private Date dateOfBirth;
-
+    @Builder.Default
     @Enumerated(EnumType.STRING)
-    private Role role;
+    @Column(nullable = false, updatable = false)
+    private Role role = Role.USER;
 
-    /* -------- Play history (composite key model) -------- */
+    @Builder.Default
+    @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
+    private List<PlayHistory> playHistory = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    private Set<PlayHistory> playHistory = new HashSet<>();
+    @Builder.Default
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Playlist> createdPlaylists = new ArrayList<>();
 
-    /* -------- Owned playlists -------- */
-
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    private Set<Playlist> playlists = new HashSet<>();
-
-    /* -------- Likes -------- */
-
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "liked_songs",
-            joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id")
-    )
-    private Set<Song> likedSongs = new HashSet<>();
-
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @Builder.Default
+    @ManyToMany
     @JoinTable(
             name = "liked_playlists",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "playlist_id", referencedColumnName = "id"),
+            indexes = {
+                    @Index(name = "idx_liked_playlists_user_id", columnList = "user_id"),
+                    @Index(name = "idx_liked_playlists_playlist_id", columnList = "playlist_id")
+            }
     )
-    private Set<Playlist> likedPlaylists = new HashSet<>();
+    @OrderColumn(name = "like_order")
+    private List<Playlist> likedPlaylists = new ArrayList<>();
 
-    /* -------- User follows user -------- */
-
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_following",
-            joinColumns = @JoinColumn(name = "follower_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "following_id", referencedColumnName = "id")
-    )
-    private Set<User> userFollowing = new HashSet<>();
-
-    @ManyToMany(mappedBy = "userFollowing", fetch = FetchType.LAZY)
-    private Set<User> userFollowers = new HashSet<>();
-
-    /* -------- User follows artists -------- */
-
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @Builder.Default
+    @ManyToMany
     @JoinTable(
             name = "artist_following",
             joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            indexes = {
+                    @Index(name = "idx_artist_following_artist_id", columnList = "artist_id"),
+                    @Index(name = "idx_artist_following_user_id", columnList = "user_id")
+            }
     )
-    private Set<Artist> artistFollowing = new HashSet<>();
+    @OrderColumn(name = "follow_order")
+    private List<Artist> artistFollowing = new ArrayList<>();
 }

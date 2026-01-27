@@ -1,12 +1,14 @@
 package com.project.cadence.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.cadence.dto.ApiResponseDTO;
+import com.project.cadence.dto.PaginatedResponseDTO;
 import com.project.cadence.dto.genre.GenrePreviewDTO;
 import com.project.cadence.model.Genre;
 import com.project.cadence.repository.GenreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,7 +20,6 @@ import java.util.*;
 @Service
 public class GenreService {
     private final GenreRepository genreRepository;
-    ObjectMapper objectMapper = new ObjectMapper();
 
     public ResponseEntity<ApiResponseDTO<String>> addNewGenre(String type) {
         try {
@@ -39,14 +40,15 @@ public class GenreService {
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres(String key) {
+    public ResponseEntity<ApiResponseDTO<PaginatedResponseDTO<GenrePreviewDTO>>> getAllGenres(int page, int size, String key) {
         try {
-            List<Genre> genres;
+            PageRequest pageable = PageRequest.of(page, size);
+            Page<Genre> genres;
 
             if (key == null || key.isBlank()) {
-                genres = genreRepository.findAll();
+                genres = genreRepository.findAll(pageable);
             } else {
-                genres = genreRepository.searchByKey(key.trim());
+                genres = genreRepository.findByTypeStartingWithIgnoreCase(key.trim(), pageable);
             }
             List<GenrePreviewDTO> genrePreviewDTOS = new ArrayList<>();
             genres.forEach(genre -> genrePreviewDTOS.add(new GenrePreviewDTO(
@@ -54,7 +56,22 @@ public class GenreService {
                     genre.getType()
             )));
 
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "Successfully retrieved all genres", genrePreviewDTOS));
+            PaginatedResponseDTO<GenrePreviewDTO> response =
+                    new PaginatedResponseDTO<>(
+                            genrePreviewDTOS,
+                            genres.getNumber(),
+                            genres.getSize(),
+                            genres.getTotalElements(),
+                            genres.getTotalPages(),
+                            genres.isLast()
+                    );
+            return ResponseEntity.ok(
+                    new ApiResponseDTO<>(
+                            true,
+                            "Successfully retrieved artists",
+                            response
+                    )
+            );
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));

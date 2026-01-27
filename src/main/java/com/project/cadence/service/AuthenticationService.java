@@ -2,11 +2,13 @@ package com.project.cadence.service;
 
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.auth.*;
+import com.project.cadence.model.Playlist;
+import com.project.cadence.model.PlaylistVisibility;
 import com.project.cadence.model.Role;
 import com.project.cadence.model.User;
+import com.project.cadence.repository.PlaylistRepository;
 import com.project.cadence.repository.UserRepository;
 import com.project.cadence.auth.TokenType;
-import com.project.cadence.utility.Utils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,8 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final PlaylistRepository playlistRepository;
+    private final UserService userService;
 
     public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> register(@NotNull RegisterRequestDTO registerRequestDTO) {
         try {
@@ -42,16 +46,22 @@ public class AuthenticationService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ApiResponseDTO<>(false, "Password must be at least 10 characters long and contain at least one special character", null));
             }
-            Role role = Role.ADMIN;
+
             User user = User.builder()
                     .name(registerRequestDTO.name())
                     .email(registerRequestDTO.email())
-                    .password(passwordEncoder.encode(password))
-                    .role(role)
-                    .dateOfBirth(registerRequestDTO.dateOfBirth())
+                    .passwordHash(passwordEncoder.encode(password))
                     .build();
 
             User savedUser = userRepository.save(user);
+            Playlist likedSongs = Playlist.builder()
+                    .name("Liked Songs")
+                    .owner(savedUser)
+                    .isSystem(true)
+                    .visibility(PlaylistVisibility.PRIVATE)
+                    .build();
+            playlistRepository.save(likedSongs);
+
             if (savedUser.getId() == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the user", null));
             }
@@ -72,7 +82,7 @@ public class AuthenticationService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "User does not exist", null));
             }
 
-            if (!passwordEncoder.matches(authenticateRequestDTO.password(), user.get().getPassword())) {
+            if (!passwordEncoder.matches(authenticateRequestDTO.password(), user.get().getPasswordHash())) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Password does not match", null));
             }
 
@@ -99,21 +109,20 @@ public class AuthenticationService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Token integrity verification failed", null));
             }
 
+            if (jwtService.isTokenExpired(payload)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new ApiResponseDTO<>(false, "Refresh token has expired", null));
+            }
+
             String userEmail = jwtService.extractEmailForPayload(payload);
             if (userEmail == null || userEmail.isEmpty() || !userRepository.existsByEmail(userEmail)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Unable to extract user email from token", null));
             }
 
-            Role role;
-            try {
-                role = Role.valueOf(jwtService.extractRoleForPayload(payload));
-            } catch (IllegalArgumentException e) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Unable to extract the user role from token", null));
-            }
-
-            if (jwtService.isTokenExpired(payload)) {
+            Role role = userService.getUserRoleFromRepository(userEmail);
+            if (role == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponseDTO<>(false, "Refresh token has expired", null));
+                        .body(new ApiResponseDTO<>(false, "User no longer exists", null));
             }
 
             String accessToken = jwtService.generateJwtToken(userEmail, role, TokenType.access);

@@ -1,11 +1,18 @@
 package com.project.cadence.dto.playlist;
 
+import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.model.PlaylistVisibility;
+
+import java.time.Instant;
 
 public record PlaylistPreviewDTO(
         String id,
         String name,
         String coverUrl,
-        PlaylistVisibility visibility
+        UserPreviewDTO owner,
+        PlaylistVisibility visibility,
+        boolean isSystem,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

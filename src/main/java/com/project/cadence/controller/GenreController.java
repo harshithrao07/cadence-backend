@@ -1,6 +1,7 @@
 package com.project.cadence.controller;
 
 import com.project.cadence.dto.ApiResponseDTO;
+import com.project.cadence.dto.PaginatedResponseDTO;
 import com.project.cadence.dto.genre.GenrePreviewDTO;
 import com.project.cadence.dto.genre.NewGenreDTO;
 import com.project.cadence.service.GenreService;
@@ -11,8 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Validated
 @RestController
@@ -31,7 +30,7 @@ public class GenreController {
     }
 
     @GetMapping("/all")
-    public ResponseEntity<ApiResponseDTO<List<GenrePreviewDTO>>> getAllGenres(@RequestParam(required = false) String key) {
-        return genreService.getAllGenres(key);
+    public ResponseEntity<ApiResponseDTO<PaginatedResponseDTO<GenrePreviewDTO>>> getAllGenres(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "24") int size, @RequestParam(required = false) String key) {
+        return genreService.getAllGenres(page, size, key);
     }
 }

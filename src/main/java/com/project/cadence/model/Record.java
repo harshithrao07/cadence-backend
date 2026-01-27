@@ -1,6 +1,5 @@
 package com.project.cadence.model;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,7 +11,12 @@ import java.util.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "record")
+@Table(
+        name = "record",
+        indexes = {
+                @Index(name = "idx_record_record_type", columnList = "record_type")
+        }
+)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class Record {
@@ -26,29 +30,35 @@ public class Record {
     @ToString.Include
     private String title;
 
-    @Column(name = "release_timestamp")
+    @Column(name = "release_timestamp", nullable = false)
     private long releaseTimestamp;
 
     @Column(name = "cover_url")
     private String coverUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "record_type")
+    @Column(name = "record_type", nullable = false)
     private RecordType recordType;
 
+    @Builder.Default
     @OneToMany(
             mappedBy = "record",
-            cascade = CascadeType.REMOVE,
-            orphanRemoval = true,
-            fetch = FetchType.LAZY
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
     )
-    private Set<Song> songs = new HashSet<>();
+    @OrderColumn(name = "song_order")
+    private List<Song> songs = new ArrayList<>();
 
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany
     @JoinTable(
             name = "artist_records",
-            joinColumns = @JoinColumn(name = "record_id"),
-            inverseJoinColumns = @JoinColumn(name = "artist_id")
+            joinColumns = @JoinColumn(name = "record_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            indexes = {
+                    @Index(name = "idx_artist_records_record_id", columnList = "record_id"),
+                    @Index(name = "idx_artist_records_artist_id", columnList = "artist_id"),
+                    @Index(name = "idx_artist_records_record_id_artist_order", columnList = "record_id, artist_order")
+            }
     )
     @OrderColumn(name = "artist_order")
     @Builder.Default

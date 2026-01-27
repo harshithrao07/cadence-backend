@@ -1,7 +1,8 @@
 package com.project.cadence.dto.user;
 
+import java.util.Optional;
+
 public record UserProfileChangeDTO(
-        String name,
-        String profileUrl
+        Optional<String> name
 ) {
 }

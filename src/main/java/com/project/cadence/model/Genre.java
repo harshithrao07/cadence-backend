@@ -1,6 +1,5 @@
 package com.project.cadence.model;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -13,7 +12,12 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "genre")
+@Table(
+        name = "genre",
+        indexes = {
+                @Index(name = "idx_genre_type", columnList = "type")
+        }
+)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class Genre {
@@ -23,10 +27,11 @@ public class Genre {
     @ToString.Include
     private String id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     @ToString.Include
     private String type;
 
-    @ManyToMany(mappedBy = "genres", fetch = FetchType.LAZY)
+    @Builder.Default
+    @ManyToMany(mappedBy = "genres")
     private Set<Song> songs = new HashSet<>();
 }

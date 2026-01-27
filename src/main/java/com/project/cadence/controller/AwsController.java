@@ -13,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -30,7 +29,7 @@ public class AwsController {
         if (!jwtService.checkIfAdminFromHttpRequest(request)) {
             return new ResponseEntity<>("You are not authorized to perform this operation", HttpStatus.UNAUTHORIZED);
         }
-        return new ResponseEntity<>(awsService.getPresignedUrl(saveFileDTO.category(), saveFileDTO.subCategory(), saveFileDTO.name(), saveFileDTO.extension()), HttpStatus.OK);
+        return new ResponseEntity<>(awsService.getPresignedUrl(saveFileDTO.category(), saveFileDTO.subCategory(), saveFileDTO.primaryKey()), HttpStatus.OK);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

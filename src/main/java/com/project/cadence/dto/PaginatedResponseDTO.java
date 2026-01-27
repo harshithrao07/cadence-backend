@@ -1,9 +1,9 @@
-package com.project.cadence.dto.artist;
+package com.project.cadence.dto;
 
 import java.util.List;
 
-public record PaginatedAllArtistsResponse(
-        List<ArtistPreviewDTO> content,
+public record PaginatedResponseDTO<T>(
+        List<T> content,
         Integer page,
         Integer size,
         Long totalElements,

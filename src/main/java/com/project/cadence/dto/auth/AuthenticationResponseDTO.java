@@ -1,6 +1,5 @@
 package com.project.cadence.dto.auth;
 
-import com.project.cadence.model.Role;
 import jakarta.annotation.Nonnull;
 
 public record AuthenticationResponseDTO(

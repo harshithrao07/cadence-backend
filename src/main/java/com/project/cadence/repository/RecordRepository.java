@@ -1,34 +1,18 @@
 package com.project.cadence.repository;
 
+import com.project.cadence.model.Artist;
 import com.project.cadence.model.Record;
-import com.project.cadence.model.RecordType;
+import com.project.cadence.model.Song;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
-import java.util.Set;
+import java.util.List;
 
 public interface RecordRepository extends CrudRepository<Record, String> {
-    @Query("""
-    SELECT DISTINCT r
-    FROM Record r
-    JOIN FETCH r.artists a
-    WHERE a.id = :artistId
-      AND (:recordType IS NULL OR r.recordType = :recordType)
-""")
-    Set<Record> findArtistRecordsByArtistId(
-            @Param("artistId") String artistId,
-            @Param("recordType") RecordType recordType
-    );
+    List<Record> findByArtistsOrderByReleaseTimestampDesc(Artist artist, Pageable of);
 
-
-    @Query("""
-    SELECT r FROM Record r
-    LEFT JOIN FETCH r.artists
-    WHERE r.id = :recordId
-""")
-    Optional<Record> findByIdWithArtists(@Param("recordId") String recordId);
-
-
+    @Query("SELECT r.songs FROM Record r WHERE r.id = :recordId")
+    List<Song> getAllSongsByRecordId(@Param("recordId") String recordId);
 }

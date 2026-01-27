@@ -14,7 +14,12 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "song")
+@Table(
+        name = "song",
+        indexes = {
+                @Index(name = "idx_song_record_id", columnList = "record_id")
+        }
+)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class Song {
@@ -28,44 +33,41 @@ public class Song {
     @ToString.Include
     private String title;
 
-    @Column
+    @Column(name = "song_url")
     private String songUrl;
 
     @Column(name = "total_duration", nullable = false)
     private int totalDuration;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(
-            name = "record_id",
-            nullable = false
-    )
+    @ManyToOne
+    @JoinColumn(name = "record_id", referencedColumnName = "id")
     private Record record;
 
-
     @Builder.Default
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @ManyToMany
     @JoinTable(
             name = "artist_created_songs",
-            joinColumns = @JoinColumn(name = "song_id"),
-            inverseJoinColumns = @JoinColumn(name = "artist_id")
+            joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
+            inverseJoinColumns = @JoinColumn(name = "artist_id", referencedColumnName = "id"),
+            indexes = {
+                    @Index(name = "idx_artist_created_songs_song_id", columnList = "song_id"),
+                    @Index(name = "idx_artist_created_songs_artist_id", columnList = "artist_id"),
+                    @Index(name = "idx_artist_created_songs_song_id_artist_order", columnList = "song_id, artist_order")
+            }
     )
     @OrderColumn(name = "artist_order")
     private List<Artist> createdBy = new ArrayList<>();
 
-    @ManyToMany(mappedBy = "likedSongs", fetch = FetchType.LAZY)
-    private Set<User> likedBy = new HashSet<>();
-
-    @ManyToMany(mappedBy = "songs", fetch = FetchType.LAZY)
-    private Set<Playlist> playlists = new HashSet<>();
-
-    @ManyToMany(cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @Builder.Default
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
             name = "song_genre",
             joinColumns = @JoinColumn(name = "song_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id")
+            inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id"),
+            indexes = {
+                    @Index(name = "idx_song_genre_song_id", columnList = "song_id"),
+                    @Index(name = "idx_song_genre_genre_id", columnList = "genre_id")
+            }
     )
     private Set<Genre> genres = new HashSet<>();
-
-    @Column(name = "track_order", columnDefinition = "INTEGER DEFAULT 0")
-    private int order;
 }
