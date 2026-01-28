@@ -12,9 +12,11 @@ import java.util.List;
 
 public interface SongRepository extends CrudRepository<Song, String> {
     @Query("""
-    SELECT s.createdBy
+    SELECT a
     FROM Song s
+    JOIN s.createdBy a
     WHERE s.id = :songId
+    ORDER BY index(a)
 """)
     List<Artist> findCreatorsBySongId(@Param("songId") String songId);
 

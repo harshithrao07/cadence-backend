@@ -3,8 +3,8 @@ package com.project.cadence.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Builder
@@ -38,10 +38,10 @@ public class Artist {
 
     @Builder.Default
     @ManyToMany(mappedBy = "artists")
-    private Set<Record> createdRecords = new HashSet<>();
+    private List<Record> createdRecords = new ArrayList<>();
 
     @Builder.Default
     @ManyToMany(mappedBy = "artistFollowing")
-    private Set<User> artistFollowers = new HashSet<>();
+    private List<User> artistFollowers = new ArrayList<>();
 }
 

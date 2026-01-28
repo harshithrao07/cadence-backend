@@ -61,6 +61,9 @@ public class User {
             indexes = {
                     @Index(name = "idx_liked_playlists_user_id", columnList = "user_id"),
                     @Index(name = "idx_liked_playlists_playlist_id", columnList = "playlist_id")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"user_id", "playlist_id"})
             }
     )
     @OrderColumn(name = "like_order")
@@ -75,6 +78,9 @@ public class User {
             indexes = {
                     @Index(name = "idx_artist_following_artist_id", columnList = "artist_id"),
                     @Index(name = "idx_artist_following_user_id", columnList = "user_id")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"user_id", "artist_id"})
             }
     )
     @OrderColumn(name = "follow_order")

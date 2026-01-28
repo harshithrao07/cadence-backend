@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -34,6 +35,7 @@ public class ArtistService {
     private final SongRepository songRepository;
     private final RecordRepository recordRepository;
     private final AwsService awsService;
+    private final JdbcTemplate jdbcTemplate;
 
     public ResponseEntity<ApiResponseDTO<String>> upsertArtist(UpsertArtistDTO dto) {
         try {
@@ -68,6 +70,16 @@ public class ArtistService {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
+
+            jdbcTemplate.update(
+                    "DELETE FROM artist_created_songs WHERE artist_id = ?",
+                    artistId
+            );
+
+            jdbcTemplate.update(
+                    "DELETE FROM artist_records WHERE artist_id = ?",
+                    artistId
+            );
 
             String coverUrl = artist.getProfileUrl();
             artistRepository.delete(artist);
@@ -278,14 +290,14 @@ public class ArtistService {
         }
     }
 
-    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getArtistFollowers(String artistId) {
+    public ResponseEntity<ApiResponseDTO<List<UserPreviewDTO>>> getArtistFollowers(String artistId) {
         try {
             Artist artist = artistRepository.findById(artistId).orElse(null);
             if (artist == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponseDTO<>(false, "Artist not found", null));
             }
 
-            Set<UserPreviewDTO> userPreviewDTOS = new HashSet<>();
+            List<UserPreviewDTO> userPreviewDTOS = new ArrayList<>();
             artist.getArtistFollowers().forEach(follower -> userPreviewDTOS.add(
                     new UserPreviewDTO(
                             follower.getId(),

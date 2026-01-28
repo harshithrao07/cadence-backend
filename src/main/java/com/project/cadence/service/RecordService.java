@@ -1,5 +1,6 @@
 package com.project.cadence.service;
 
+import com.amazonaws.HttpMethod;
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.artist.ArtistPreviewDTO;
 import com.project.cadence.dto.record.UpsertRecordDTO;
@@ -102,15 +103,16 @@ public class RecordService {
                         );
                         song.setCreatedBy(eachNewSongDTO.artistIds().stream()
                                 .map(artistMap::get)
-                                .toList()
+                                .collect(Collectors.toList())
                         );
                         song.setTotalDuration(eachNewSongDTO.totalDuration());
 
                         return song;
                     })
-                    .toList();
+                    .collect(Collectors.toList());
 
-            record.setSongs(songs);
+            record.getSongs().clear();
+            record.getSongs().addAll(songs);
             Record savedRecord = recordRepository.save(record);
 
             savedRecord.getSongs().forEach(song -> {
@@ -125,7 +127,7 @@ public class RecordService {
                             .map(song -> new SongResponseDTO(
                                     song.getId(),
                                     song.getTitle(),
-                                    awsService.getPresignedUrl("song", "song_url", song.getId())
+                                    awsService.getPresignedUrl("song", "song_url", song.getId(), HttpMethod.PUT)
                             ))
                             .toList()
             );

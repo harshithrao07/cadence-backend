@@ -60,6 +60,9 @@ public class Playlist {
                     @Index(name = "idx_playlist_songs_playlist_id", columnList = "playlist_id"),
                     @Index(name = "idx_playlist_songs_song_id", columnList = "song_id"),
                     @Index(name = "idx_playlist_songs_playlist_id_song_order", columnList = "playlist_id, song_order")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"playlist_id", "song_id"})
             }
     )
     @OrderColumn(name = "song_order")

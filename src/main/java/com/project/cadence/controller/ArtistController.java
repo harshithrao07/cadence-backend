@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Set;
+import java.util.List;
 
 @Validated
 @RestController
@@ -68,7 +68,7 @@ public class ArtistController {
     }
 
     @GetMapping(path = "/{artistId}/followers")
-    public ResponseEntity<ApiResponseDTO<Set<UserPreviewDTO>>> getArtistFollowers(@PathVariable("artistId") String artistId) {
+    public ResponseEntity<ApiResponseDTO<List<UserPreviewDTO>>> getArtistFollowers(@PathVariable("artistId") String artistId) {
         return artistService.getArtistFollowers(artistId);
     }
 

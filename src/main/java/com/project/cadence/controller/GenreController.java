@@ -22,7 +22,7 @@ public class GenreController {
     private final JwtService jwtService;
 
     @PostMapping("/add")
-    public ResponseEntity<ApiResponseDTO<String>> addNewSong(HttpServletRequest request, @Validated @RequestBody NewGenreDTO newGenreDTO) {
+    public ResponseEntity<ApiResponseDTO<String>> addNewGenre(HttpServletRequest request, @Validated @RequestBody NewGenreDTO newGenreDTO) {
         if (jwtService.checkIfAdminFromHttpRequest(request)) {
             return genreService.addNewGenre(newGenreDTO.type());
         }

@@ -58,6 +58,9 @@ public class Record {
                     @Index(name = "idx_artist_records_record_id", columnList = "record_id"),
                     @Index(name = "idx_artist_records_artist_id", columnList = "artist_id"),
                     @Index(name = "idx_artist_records_record_id_artist_order", columnList = "record_id, artist_order")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"record_id", "artist_id"})
             }
     )
     @OrderColumn(name = "artist_order")

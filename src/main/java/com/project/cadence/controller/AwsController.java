@@ -1,7 +1,7 @@
 package com.project.cadence.controller;
 
 import com.project.cadence.dto.s3.FileUploadResult;
-import com.project.cadence.dto.s3.SaveFileDTO;
+import com.project.cadence.dto.s3.MetadataDTO;
 import com.project.cadence.service.AwsService;
 import com.project.cadence.service.JwtService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,11 +25,11 @@ public class AwsController {
     private final JwtService jwtService;
 
     @PostMapping("/presigned-url")
-    public ResponseEntity<Object> getPresignedUrl(HttpServletRequest request, @Valid @RequestBody SaveFileDTO saveFileDTO) {
+    public ResponseEntity<Object> getPresignedUrl(HttpServletRequest request, @Valid @RequestBody MetadataDTO metadataDTO) {
         if (!jwtService.checkIfAdminFromHttpRequest(request)) {
             return new ResponseEntity<>("You are not authorized to perform this operation", HttpStatus.UNAUTHORIZED);
         }
-        return new ResponseEntity<>(awsService.getPresignedUrl(saveFileDTO.category(), saveFileDTO.subCategory(), saveFileDTO.primaryKey()), HttpStatus.OK);
+        return new ResponseEntity<>(awsService.getPresignedUrl(metadataDTO.category(), metadataDTO.subCategory(), metadataDTO.primaryKey(), metadataDTO.httpMethod()), HttpStatus.OK);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -37,6 +37,6 @@ public class AwsController {
         if (!jwtService.checkIfAdminFromHttpRequest(request)) {
             return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
         }
-        return new ResponseEntity<>(awsService.save(parts), HttpStatus.OK);
+        return awsService.save(parts);
     }
 }

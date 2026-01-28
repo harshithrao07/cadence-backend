@@ -53,6 +53,9 @@ public class Song {
                     @Index(name = "idx_artist_created_songs_song_id", columnList = "song_id"),
                     @Index(name = "idx_artist_created_songs_artist_id", columnList = "artist_id"),
                     @Index(name = "idx_artist_created_songs_song_id_artist_order", columnList = "song_id, artist_order")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"song_id", "artist_id"})
             }
     )
     @OrderColumn(name = "artist_order")
@@ -67,6 +70,9 @@ public class Song {
             indexes = {
                     @Index(name = "idx_song_genre_song_id", columnList = "song_id"),
                     @Index(name = "idx_song_genre_genre_id", columnList = "genre_id")
+            },
+            uniqueConstraints = {
+                    @UniqueConstraint(columnNames = {"song_id", "genre_id"})
             }
     )
     private Set<Genre> genres = new HashSet<>();

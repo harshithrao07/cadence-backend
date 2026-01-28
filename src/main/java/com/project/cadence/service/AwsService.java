@@ -6,10 +6,12 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.project.cadence.dto.s3.FileUploadResult;
 import jakarta.servlet.http.Part;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -45,10 +47,34 @@ public class AwsService {
 
 
     @Async
-    public String getPresignedUrl(String category, String subCategory, @NotNull String primaryKey) {
+    public String getPresignedUrl(String category, String subCategory, String primaryKey, HttpMethod httpMethod) {
         String fileName = category + "/" + subCategory + "/" + primaryKey;
         log.info("Generated file name '{}' for saving in bucket '{}'", fileName, s3BucketName);
-        return generateUrl(fileName, HttpMethod.PUT);
+
+        if (httpMethod.equals(HttpMethod.DELETE)) {
+            handleDeleteDbUpdate(category, subCategory, primaryKey);
+        }
+
+        return generateUrl(fileName, httpMethod);
+    }
+
+    @Transactional
+    public void handleDeleteDbUpdate(
+            String category,
+            String subCategory,
+            String primaryKey
+    ) {
+        try {
+            String sql = "UPDATE " + category +
+                    " SET " + subCategory + " = NULL WHERE id = ?";
+
+            jdbcTemplate.update(sql, primaryKey);
+        } catch (Exception e) {
+            log.error(
+                    "DB update failed for delete. table={}, column={}, id={}",
+                    category, subCategory, primaryKey, e
+            );
+        }
     }
 
     public void deleteObject(String fileName) {
@@ -63,7 +89,7 @@ public class AwsService {
         return amazonS3.getObject(s3BucketName, fileName);
     }
 
-    public List<FileUploadResult> save(List<Part> parts) {
+    public ResponseEntity<List<FileUploadResult>> save(List<Part> parts) {
         try {
             List<CompletableFuture<FileUploadResult>> futures = new ArrayList<>();
 
@@ -97,11 +123,11 @@ public class AwsService {
                         result.url());
             }
 
-            return uploadResults;
+            return new ResponseEntity<>(uploadResults, HttpStatus.OK);
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
         }
-        return null;
+        return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Async

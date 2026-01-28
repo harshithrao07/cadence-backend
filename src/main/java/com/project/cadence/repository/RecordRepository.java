@@ -13,6 +13,13 @@ import java.util.List;
 public interface RecordRepository extends CrudRepository<Record, String> {
     List<Record> findByArtistsOrderByReleaseTimestampDesc(Artist artist, Pageable of);
 
-    @Query("SELECT r.songs FROM Record r WHERE r.id = :recordId")
+    @Query("""
+    SELECT s
+    FROM Record r
+    JOIN r.songs s
+    WHERE r.id = :recordId
+    ORDER BY INDEX(s)
+""")
     List<Song> getAllSongsByRecordId(@Param("recordId") String recordId);
+
 }
