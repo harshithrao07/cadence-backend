@@ -5,6 +5,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.project.cadence.dto.s3.FileUploadResult;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -17,8 +18,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.nio.file.AccessDeniedException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+
+import static com.project.cadence.constant.AdminOnlyUploadTables.TABLES;
 
 
 @Slf4j
@@ -28,7 +32,7 @@ public class AwsService {
 
     private final AmazonS3 amazonS3;
     private final JdbcTemplate jdbcTemplate;
-
+    private final JwtService jwtService;
 
     @Value("${cloud.aws.s3.bucket}")
     private String s3BucketName;
@@ -89,12 +93,12 @@ public class AwsService {
         return amazonS3.getObject(s3BucketName, fileName);
     }
 
-    public ResponseEntity<List<FileUploadResult>> save(List<Part> parts) {
+    public ResponseEntity<List<FileUploadResult>> save(boolean isAdmin, List<Part> parts) {
         try {
             List<CompletableFuture<FileUploadResult>> futures = new ArrayList<>();
 
             for (Part part : parts) {
-                CompletableFuture<FileUploadResult> future = uploadFileAsync(part);
+                CompletableFuture<FileUploadResult> future = uploadFileAsync(isAdmin, part);
                 if (future == null) {
                     return null;
                 }
@@ -131,7 +135,7 @@ public class AwsService {
     }
 
     @Async
-    public CompletableFuture<FileUploadResult> uploadFileAsync(Part part) {
+    public CompletableFuture<FileUploadResult> uploadFileAsync(boolean isAdmin, Part part) {
         try {
             long size = part.getSize();
             String submittedName = part.getSubmittedFileName();
@@ -146,6 +150,12 @@ public class AwsService {
             String primaryKey = nameParts[2];
 
             String objectKey = tableName + "/" + columnName + "/" + primaryKey;
+
+            if (TABLES.contains(tableName) && !isAdmin) {
+                return CompletableFuture.failedFuture(
+                        new AccessDeniedException("Admin access required")
+                );
+            }
 
             /* --------- CHECK & DELETE EXISTING FILE --------- */
             if (amazonS3.doesObjectExist(s3BucketName, objectKey)) {

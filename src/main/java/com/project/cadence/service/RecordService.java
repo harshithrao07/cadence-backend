@@ -17,7 +17,9 @@ import com.project.cadence.repository.SongRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -245,6 +247,38 @@ public class RecordService {
             log.error("An exception has occurred", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
+        }
+    }
+
+    public List<RecordPreviewDTO> getRecordsForSearch(Pageable pageable, String key) {
+        try {
+            String searchKey = (key == null) ? "" : key.trim();
+            Page<Record> recordPage =
+                    recordRepository.findByTitleContainingIgnoreCase(
+                            searchKey,
+                            pageable
+                    );
+
+            return recordPage.getContent()
+                    .stream()
+                    .map(record -> new RecordPreviewDTO(
+                                    record.getId(),
+                                    record.getTitle(),
+                                    record.getReleaseTimestamp(),
+                                    record.getCoverUrl(),
+                                    record.getRecordType(),
+                                    record.getArtists().stream()
+                                            .map(artist -> new ArtistPreviewDTO(
+                                                    artist.getId(),
+                                                    artist.getName(),
+                                                    artist.getProfileUrl()
+                                            )).toList()
+                            )
+                    )
+                    .toList();
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return List.of();
         }
     }
 

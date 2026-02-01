@@ -34,9 +34,6 @@ public class AwsController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<FileUploadResult>> save(HttpServletRequest request, @RequestPart("file") List<Part> parts) {
-        if (!jwtService.checkIfAdminFromHttpRequest(request)) {
-            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
-        }
-        return awsService.save(parts);
+        return awsService.save(jwtService.checkIfAdminFromHttpRequest(request), parts);
     }
 }

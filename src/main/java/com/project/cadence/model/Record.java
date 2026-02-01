@@ -14,7 +14,8 @@ import java.util.*;
 @Table(
         name = "record",
         indexes = {
-                @Index(name = "idx_record_record_type", columnList = "record_type")
+                @Index(name = "idx_record_record_type", columnList = "record_type"),
+                @Index(name = "idx_record_title", columnList = "title")
         }
 )
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)

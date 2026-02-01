@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -81,6 +82,11 @@ public class ArtistService {
                     artistId
             );
 
+            jdbcTemplate.update(
+                    "DELETE FROM artist_following WHERE artist_id = ?",
+                    artistId
+            );
+
             String coverUrl = artist.getProfileUrl();
             artistRepository.delete(artist);
 
@@ -108,7 +114,7 @@ public class ArtistService {
             String key
     ) {
         try {
-            PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+            Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
 
             Page<Artist> artistPage;
             if (key != null && !key.trim().isEmpty()) {
@@ -147,6 +153,24 @@ public class ArtistService {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponseDTO<>(false, "An error has occurred in the server", null));
+        }
+    }
+
+    public List<ArtistPreviewDTO> getArtistsForSearch(Pageable pageable, String key) {
+        try {
+            String searchKey = (key == null) ? "" : key.trim();
+            Page<Artist> artistPage = artistRepository.findByNameContainingIgnoreCase(searchKey, pageable);
+            return artistPage
+                    .stream()
+                    .map(artist -> new ArtistPreviewDTO(
+                            artist.getId(),
+                            artist.getName(),
+                            artist.getProfileUrl()
+                    ))
+                    .toList();
+        } catch (Exception e) {
+            log.error("An exception has occurred {}", e.getMessage(), e);
+            return List.of();
         }
     }
 

@@ -2,10 +2,7 @@ package com.project.cadence.service;
 
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.auth.*;
-import com.project.cadence.model.Playlist;
-import com.project.cadence.model.PlaylistVisibility;
-import com.project.cadence.model.Role;
-import com.project.cadence.model.User;
+import com.project.cadence.model.*;
 import com.project.cadence.repository.PlaylistRepository;
 import com.project.cadence.repository.UserRepository;
 import com.project.cadence.auth.TokenType;
@@ -59,6 +56,7 @@ public class AuthenticationService {
                     .owner(savedUser)
                     .isSystem(true)
                     .visibility(PlaylistVisibility.PRIVATE)
+                    .systemType(SystemPlaylistType.LIKED_SONGS)
                     .build();
             playlistRepository.save(likedSongs);
 

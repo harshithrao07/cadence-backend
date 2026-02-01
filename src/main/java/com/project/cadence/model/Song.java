@@ -17,7 +17,8 @@ import java.util.Set;
 @Table(
         name = "song",
         indexes = {
-                @Index(name = "idx_song_record_id", columnList = "record_id")
+                @Index(name = "idx_song_record_id", columnList = "record_id"),
+                @Index(name = "idx_song_title", columnList = "title")
         }
 )
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)

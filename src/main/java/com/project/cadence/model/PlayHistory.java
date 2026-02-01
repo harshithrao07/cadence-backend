@@ -16,6 +16,7 @@ import java.time.Instant;
 @Table(
         name = "play_history",
         indexes = {
+                @Index(name = "idx_play_history_user_id_song_id ", columnList = "user_id, song_id"),
                 @Index(name = "idx_play_history_song_id ", columnList = "song_id"),
                 @Index(name = "idx_play_history_user_id_play_count_desc", columnList = "user_id, play_count DESC"),
                 @Index(name = "idx_play_history_user_id_last_played_at_desc", columnList = "user_id, last_played_at DESC"),

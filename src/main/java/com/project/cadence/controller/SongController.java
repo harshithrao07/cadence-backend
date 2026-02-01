@@ -2,7 +2,9 @@ package com.project.cadence.controller;
 
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.song.*;
+import com.project.cadence.service.JwtService;
 import com.project.cadence.service.SongService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -17,6 +19,7 @@ import java.util.List;
 @RequestMapping("/api/v1/song")
 public class SongController {
     private final SongService songService;
+    private final JwtService jwtService;
 
     @GetMapping("/all")
     public ResponseEntity<ApiResponseDTO<List<EachSongDTO>>> getAllSongsByRecordId(
@@ -33,7 +36,8 @@ public class SongController {
     }
 
     @GetMapping("/stream/{songId}")
-    public ResponseEntity<StreamingResponseBody> streamSongById(@PathVariable("songId") String songId) {
-        return songService.streamSongById(songId);
+    public ResponseEntity<StreamingResponseBody> streamSongById(HttpServletRequest request, @PathVariable("songId") String songId) {
+        String email = jwtService.getEmailFromHttpRequest(request);
+        return songService.streamSongById(songId, email);
     }
 }

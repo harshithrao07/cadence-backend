@@ -18,14 +18,14 @@ import java.util.List;
 @Table(
         name = "playlist",
         indexes = {
-                @Index(name = "idx_playlist_user_id", columnList = "user_id")
+                @Index(name = "idx_playlist_user_id", columnList = "user_id"),
+                @Index(name = "idx_playlist_name", columnList = "name")
         }
 )
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
 public class Playlist {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
     @ToString.Include
     private String id;
@@ -75,4 +75,26 @@ public class Playlist {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Enumerated(EnumType.STRING)
+    private SystemPlaylistType systemType;
+
+    @PrePersist
+    private void assignIdIfMissing() {
+
+        if (isSystem) {
+            if (systemType == null) {
+                throw new IllegalStateException(
+                        "systemType must be set for system playlists"
+                );
+            }
+
+            this.id = systemType.name() + "_" + owner.getId();
+            return;
+        }
+
+        if (id == null || id.isBlank()) {
+            this.id = java.util.UUID.randomUUID().toString();
+        }
+    }
 }
