@@ -9,17 +9,22 @@ import com.project.cadence.dto.record.RecordPreviewWithCoverImageDTO;
 import com.project.cadence.dto.song.*;
 import com.project.cadence.model.*;
 import com.project.cadence.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 
 @Slf4j
@@ -112,40 +117,150 @@ public class SongService {
         }
     }
 
-    public ResponseEntity<StreamingResponseBody> streamSongById(String songId, String email) {
+    public ResponseEntity<StreamingResponseBody> streamSongById(
+            String songId,
+            String email,
+            HttpServletRequest request
+    ) {
+
         try {
+
             Song song = songRepository.findById(songId).orElse(null);
             if (song == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
 
-            User user = userRepository.findByEmail(email)
-                    .orElse(null);
-
+            User user = userRepository.findByEmail(email).orElse(null);
             if (user == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
             }
 
             registerPlay(user.getId(), song);
 
+            String rangeHeader = request.getHeader("Range");
             String songUrl = song.getSongUrl();
             String objectKey = awsService.extractKeyFromUrl(songUrl);
-            if (!awsService.findByName(objectKey)) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+
+            /*
+             * ============================
+             * CASE 1: FILE EXISTS IN S3
+             * ============================
+             */
+            if (objectKey != null && !objectKey.isEmpty() && awsService.findByName(objectKey)) {
+                long fileSize = awsService.getFileSize(objectKey);
+
+                long start = 0;
+                long end = fileSize - 1;
+
+                if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                    String[] ranges = rangeHeader.substring(6).split("-");
+                    start = Long.parseLong(ranges[0]);
+                    if (ranges.length > 1 && !ranges[1].isEmpty()) {
+                        end = Long.parseLong(ranges[1]);
+                    }
+                    if (end > fileSize - 1) {
+                        end = fileSize - 1;
+                    }
+                }
+
+                long contentLength = end - start + 1;
+
+                S3Object s3Object = awsService.getObjectWithRange(objectKey, start, end);
+
+                StreamingResponseBody stream = outputStream -> {
+                    try (InputStream in = s3Object.getObjectContent()) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, bytesRead);
+                        }
+                    }
+                };
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.set(HttpHeaders.CONTENT_TYPE,
+                        s3Object.getObjectMetadata().getContentType() != null
+                                ? s3Object.getObjectMetadata().getContentType()
+                                : "audio/mpeg");
+
+                headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+                headers.set(HttpHeaders.CONTENT_RANGE,
+                        "bytes " + start + "-" + end + "/" + fileSize);
+                headers.setContentLength(contentLength);
+
+                return new ResponseEntity<>(stream, headers, HttpStatus.PARTIAL_CONTENT);
             }
 
-            S3Object s3Object = awsService.getObject(objectKey);
-            StreamingResponseBody stream = getStreamingResponseBody(s3Object);
-            return ResponseEntity.status(HttpStatus.OK).body(stream);
+            /*
+             * ============================
+             * CASE 2: FALLBACK TO EXTERNAL URL
+             * ============================
+             */
+
+            HttpURLConnection connection = (HttpURLConnection) new URL(songUrl).openConnection();
+            connection.setRequestMethod("GET");
+
+            if (rangeHeader != null) {
+                connection.setRequestProperty("Range", rangeHeader);
+            }
+
+            connection.connect();
+
+            int responseCode = connection.getResponseCode();
+            long fileSize = connection.getContentLengthLong();
+
+            long start = 0;
+            long end = fileSize - 1;
+
+            if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                String[] ranges = rangeHeader.substring(6).split("-");
+                start = Long.parseLong(ranges[0]);
+                if (ranges.length > 1 && !ranges[1].isEmpty()) {
+                    end = Long.parseLong(ranges[1]);
+                }
+                if (end > fileSize - 1) {
+                    end = fileSize - 1;
+                }
+            }
+
+            long contentLength = end - start + 1;
+
+            StreamingResponseBody stream = outputStream -> {
+                try (InputStream in = connection.getInputStream()) {
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+                    while ((bytesRead = in.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+                }
+            };
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.CONTENT_TYPE,
+                    connection.getContentType() != null
+                            ? connection.getContentType()
+                            : "audio/mpeg");
+
+            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+
+            if (responseCode == 206) {
+                headers.set(HttpHeaders.CONTENT_RANGE,
+                        connection.getHeaderField("Content-Range"));
+                headers.setContentLength(contentLength);
+                return new ResponseEntity<>(stream, headers, HttpStatus.PARTIAL_CONTENT);
+            }
+
+            headers.setContentLength(fileSize);
+            return new ResponseEntity<>(stream, headers, HttpStatus.OK);
+
         } catch (Exception e) {
-            log.error("An exception has occurred {}", e.getMessage(), e);
+            log.error("Streaming error: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
     @Transactional
     public void registerPlay(String userId, Song song) {
-
         Optional<PlayHistory> existing =
                 playHistoryRepository.findByUserIdAndSongId(userId, song.getId());
 

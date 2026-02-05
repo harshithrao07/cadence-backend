@@ -38,6 +38,6 @@ public class SongController {
     @GetMapping("/stream/{songId}")
     public ResponseEntity<StreamingResponseBody> streamSongById(HttpServletRequest request, @PathVariable("songId") String songId) {
         String email = jwtService.getEmailFromHttpRequest(request);
-        return songService.streamSongById(songId, email);
+        return songService.streamSongById(songId, email, request);
     }
 }

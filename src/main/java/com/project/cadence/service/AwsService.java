@@ -2,6 +2,7 @@ package com.project.cadence.service;
 
 import com.amazonaws.HttpMethod;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.project.cadence.dto.s3.FileUploadResult;
@@ -32,7 +33,6 @@ public class AwsService {
 
     private final AmazonS3 amazonS3;
     private final JdbcTemplate jdbcTemplate;
-    private final JwtService jwtService;
 
     @Value("${cloud.aws.s3.bucket}")
     private String s3BucketName;
@@ -219,4 +219,16 @@ public class AwsService {
     public String getUrl(String objectKey) {
         return amazonS3.getUrl(s3BucketName, objectKey).toString();
     }
+
+    public S3Object getObjectWithRange(String key, long start, long end) {
+        GetObjectRequest request = new GetObjectRequest(s3BucketName, key);
+        request.setRange(start, end);
+        return amazonS3.getObject(request);
+    }
+
+    public long getFileSize(String key) {
+        ObjectMetadata metadata = amazonS3.getObjectMetadata(s3BucketName, key);
+        return metadata.getContentLength();
+    }
+
 }
