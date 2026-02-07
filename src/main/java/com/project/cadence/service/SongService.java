@@ -1,19 +1,17 @@
 package com.project.cadence.service;
 
 import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.artist.ArtistPreviewDTO;
 import com.project.cadence.dto.genre.GenrePreviewDTO;
 import com.project.cadence.dto.record.RecordPreviewWithCoverImageDTO;
 import com.project.cadence.dto.song.*;
+import com.project.cadence.events.StreamSongEvent;
 import com.project.cadence.model.*;
 import com.project.cadence.repository.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -35,7 +33,7 @@ public class SongService {
     private final SongRepository songRepository;
     private final AwsService awsService;
     private final UserRepository userRepository;
-    private final PlayHistoryRepository playHistoryRepository;
+    private final ApplicationEventPublisher publisher;
 
     public ResponseEntity<ApiResponseDTO<List<EachSongDTO>>> getAllSongsByRecordId(String recordId) {
         try {
@@ -120,11 +118,9 @@ public class SongService {
     public ResponseEntity<StreamingResponseBody> streamSongById(
             String songId,
             String email,
-            HttpServletRequest request
+            String rangeHeader
     ) {
-
         try {
-
             Song song = songRepository.findById(songId).orElse(null);
             if (song == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -135,9 +131,8 @@ public class SongService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
             }
 
-            registerPlay(user.getId(), song);
+            publisher.publishEvent(new StreamSongEvent(user.getId(), songId));
 
-            String rangeHeader = request.getHeader("Range");
             String songUrl = song.getSongUrl();
             String objectKey = awsService.extractKeyFromUrl(songUrl);
 
@@ -153,15 +148,33 @@ public class SongService {
                 long end = fileSize - 1;
 
                 if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-                    String[] ranges = rangeHeader.substring(6).split("-");
-                    start = Long.parseLong(ranges[0]);
+
+                    String rangeValue = rangeHeader.substring(6).trim();
+                    String[] ranges = rangeValue.split("-");
+
+                    // Start
+                    if (!ranges[0].isEmpty()) {
+                        start = Long.parseLong(ranges[0]);
+                    }
+
+                    // End (if provided)
                     if (ranges.length > 1 && !ranges[1].isEmpty()) {
                         end = Long.parseLong(ranges[1]);
+                    } else {
+                        end = fileSize - 1;
                     }
-                    if (end > fileSize - 1) {
+
+                    // Safety check
+                    if (end >= fileSize) {
+                        end = fileSize - 1;
+                    }
+
+                    if (start > end) {
+                        start = 0;
                         end = fileSize - 1;
                     }
                 }
+
 
                 long contentLength = end - start + 1;
 
@@ -213,15 +226,33 @@ public class SongService {
             long end = fileSize - 1;
 
             if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
-                String[] ranges = rangeHeader.substring(6).split("-");
-                start = Long.parseLong(ranges[0]);
+
+                String rangeValue = rangeHeader.substring(6).trim();
+                String[] ranges = rangeValue.split("-");
+
+                // Start
+                if (!ranges[0].isEmpty()) {
+                    start = Long.parseLong(ranges[0]);
+                }
+
+                // End (if provided)
                 if (ranges.length > 1 && !ranges[1].isEmpty()) {
                     end = Long.parseLong(ranges[1]);
+                } else {
+                    end = fileSize - 1;
                 }
-                if (end > fileSize - 1) {
+
+                // Safety check
+                if (end >= fileSize) {
+                    end = fileSize - 1;
+                }
+
+                if (start > end) {
+                    start = 0;
                     end = fileSize - 1;
                 }
             }
+
 
             long contentLength = end - start + 1;
 
@@ -257,45 +288,6 @@ public class SongService {
             log.error("Streaming error: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
-    }
-
-    @Transactional
-    public void registerPlay(String userId, Song song) {
-        Optional<PlayHistory> existing =
-                playHistoryRepository.findByUserIdAndSongId(userId, song.getId());
-
-        PlayHistory playHistory;
-        if (existing.isPresent()) {
-            playHistory = existing.get();
-            playHistory.setPlayCount(playHistory.getPlayCount() + 1);
-        } else {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
-
-            playHistory = PlayHistory.builder()
-                    .id(new PlayHistoryId(userId, song.getId()))
-                    .user(user)
-                    .song(song)
-                    .playCount(1)
-                    .build();
-        }
-        playHistoryRepository.save(playHistory);
-    }
-
-    private static @NotNull StreamingResponseBody getStreamingResponseBody(@NotNull S3Object s3Object) {
-        S3ObjectInputStream s3ObjectInputStream = s3Object.getObjectContent();
-
-        return outputStream -> {
-            try (s3ObjectInputStream) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = s3ObjectInputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
-            } catch (Exception e) {
-                log.error("An exception has occurred {}", e.getMessage(), e);
-            }
-        };
     }
 
     public List<EachSongDTO> getRecordsForSearch(Pageable pageable, String key) {

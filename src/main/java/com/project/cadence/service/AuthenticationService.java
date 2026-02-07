@@ -2,20 +2,25 @@ package com.project.cadence.service;
 
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.auth.*;
+import com.project.cadence.events.UserCreatedEvent;
 import com.project.cadence.model.*;
-import com.project.cadence.repository.PlaylistRepository;
 import com.project.cadence.repository.UserRepository;
-import com.project.cadence.auth.TokenType;
+import com.project.cadence.utils.JwtUtil;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Base64;
 import java.util.Optional;
 
 @Slf4j
@@ -24,10 +29,10 @@ import java.util.Optional;
 public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
-    private final PlaylistRepository playlistRepository;
-    private final UserService userService;
+    private final ApplicationEventPublisher publisher;
+    private final JwtUtil jwtUtil;
 
+    @Transactional
     public ResponseEntity<ApiResponseDTO<AuthenticationResponseDTO>> register(@NotNull RegisterRequestDTO registerRequestDTO) {
         try {
             if (userRepository.existsByEmail(registerRequestDTO.email())) {
@@ -51,22 +56,29 @@ public class AuthenticationService {
                     .build();
 
             User savedUser = userRepository.save(user);
-            Playlist likedSongs = Playlist.builder()
-                    .name("Liked Songs")
-                    .owner(savedUser)
-                    .isSystem(true)
-                    .visibility(PlaylistVisibility.PRIVATE)
-                    .systemType(SystemPlaylistType.LIKED_SONGS)
-                    .build();
-            playlistRepository.save(likedSongs);
+            publisher.publishEvent(new UserCreatedEvent(savedUser.getId()));
 
             if (savedUser.getId() == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the user", null));
             }
 
-            String accessToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.access);
-            String refreshToken = jwtService.generateJwtToken(savedUser.getEmail(), savedUser.getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true, "User registered successfully", new AuthenticationResponseDTO(savedUser.getId(), accessToken, refreshToken)));
+            String accessToken = jwtUtil.generateToken(savedUser.getEmail(), 15);
+            String refreshToken = jwtUtil.generateToken(savedUser.getEmail(), 7 * 24 * 60);
+
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/auth/v1/refresh")
+                    .maxAge(7 * 24 * 60 * 60)
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(new ApiResponseDTO<>(
+                            true,
+                            "User registered successfully",
+                            new AuthenticationResponseDTO(savedUser.getId(), accessToken)
+                    ));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
@@ -84,47 +96,23 @@ public class AuthenticationService {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponseDTO<>(false, "Password does not match", null));
             }
 
-            String accessToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.access);
-            String refreshToken = jwtService.generateJwtToken(user.get().getEmail(), user.get().getRole(), TokenType.refresh);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "User authenticated successfully", new AuthenticationResponseDTO(user.get().getId(), accessToken, refreshToken)));
-        } catch (Exception e) {
-            log.error("An exception has occurred {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
-        }
-    }
+            String accessToken = jwtUtil.generateToken(user.get().getEmail(), 15);
+            String refreshToken = jwtUtil.generateToken(user.get().getEmail(), 7 * 24 * 60);
 
-    public ResponseEntity<ApiResponseDTO<String>> refreshToken(RefreshTokenRequestDTO refreshTokenRequestDTO) {
-        try {
-            String[] sections = refreshTokenRequestDTO.refreshToken().split("\\.");
+            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/auth/v1/refresh")
+                    .maxAge(7 * 24 * 60 * 60)
+                    .build();
 
-            Base64.Decoder decoder = Base64.getUrlDecoder();
-            String header = new String(decoder.decode(sections[0]));
-            String payload = new String(decoder.decode(sections[1]));
-            String tokenSignature = sections[2];
-
-            String expectedSignature = jwtService.generateSignature(header, payload);
-            if (!tokenSignature.equals(expectedSignature)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Token integrity verification failed", null));
-            }
-
-            if (jwtService.isTokenExpired(payload)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponseDTO<>(false, "Refresh token has expired", null));
-            }
-
-            String userEmail = jwtService.extractEmailForPayload(payload);
-            if (userEmail == null || userEmail.isEmpty() || !userRepository.existsByEmail(userEmail)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "Unable to extract user email from token", null));
-            }
-
-            Role role = userService.getUserRoleFromRepository(userEmail);
-            if (role == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new ApiResponseDTO<>(false, "User no longer exists", null));
-            }
-
-            String accessToken = jwtService.generateJwtToken(userEmail, role, TokenType.access);
-            return ResponseEntity.status(HttpStatus.OK).body(new ApiResponseDTO<>(true, "New Access Token successfully generated", accessToken));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(new ApiResponseDTO<>(
+                            true,
+                            "User registered successfully",
+                            new AuthenticationResponseDTO(user.get().getId(), accessToken)
+                    ));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
@@ -140,5 +128,15 @@ public class AuthenticationService {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
+    }
+
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("refreshToken", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+        return ResponseEntity.ok("Logged out successfully");
     }
 }

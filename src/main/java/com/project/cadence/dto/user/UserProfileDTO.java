@@ -12,6 +12,8 @@ public record UserProfileDTO(
         String profileUrl,
         List<PlaylistPreviewDTO> createdPlaylistsPreview,
         List<PlaylistPreviewDTO> likedPlaylistsPreview,
-        List<ArtistPreviewDTO> artistFollowing
+        List<ArtistPreviewDTO> artistFollowing,
+        boolean emailVerified,
+        boolean isOwner
 ) {
 }

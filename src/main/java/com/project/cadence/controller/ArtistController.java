@@ -5,11 +5,11 @@ import com.project.cadence.dto.PaginatedResponseDTO;
 import com.project.cadence.dto.artist.*;
 import com.project.cadence.dto.user.UserPreviewDTO;
 import com.project.cadence.service.ArtistService;
-import com.project.cadence.service.JwtService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,23 +20,18 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/artist")
 public class ArtistController {
-    private final JwtService jwtService;
     private final ArtistService artistService;
 
     @PostMapping(path = "/upsert")
-    public ResponseEntity<ApiResponseDTO<String>> upsertArtist(HttpServletRequest request, @Validated @RequestBody UpsertArtistDTO upsertArtistDTO) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return artistService.upsertArtist(upsertArtistDTO);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponseDTO<String>> upsertArtist(@Validated @RequestBody UpsertArtistDTO upsertArtistDTO) {
+        return artistService.upsertArtist(upsertArtistDTO);
     }
 
     @DeleteMapping(path = "/delete/{artistId}")
-    public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return artistService.deleteExistingArtist(artistId);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteExistingArtist(@PathVariable("artistId") String artistId) {
+        return artistService.deleteExistingArtist(artistId);
     }
 
     @GetMapping(path = "/all")
@@ -50,21 +45,18 @@ public class ArtistController {
     }
 
     @PostMapping(path = "/{artistId}/follow")
-    public ResponseEntity<ApiResponseDTO<Void>> followArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return artistService.followArtist(artistId, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<Void>> followArtist(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("artistId") String artistId) {
+        return artistService.followArtist(artistId, userDetails.getUsername());
     }
 
     @PostMapping(path = "/{artistId}/unfollow")
-    public ResponseEntity<ApiResponseDTO<Void>> unfollowArtist(HttpServletRequest request, @PathVariable("artistId") String artistId) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return artistService.unfollowArtist(artistId, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<Void>> unfollowArtist(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("artistId") String artistId) {
+        return artistService.unfollowArtist(artistId, userDetails.getUsername());
     }
 
     @GetMapping(path = "/{artistId}/isFollowing")
-    public ResponseEntity<ApiResponseDTO<Boolean>> isFollowing(HttpServletRequest request, @PathVariable("artistId") String artistId) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return artistService.isFollowing(artistId, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<Boolean>> isFollowing(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("artistId") String artistId) {
+        return artistService.isFollowing(artistId, userDetails.getUsername());
     }
 
     @GetMapping(path = "/{artistId}/followers")

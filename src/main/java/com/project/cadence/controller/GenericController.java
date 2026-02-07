@@ -4,10 +4,10 @@ import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.generic.DiscoverDTO;
 import com.project.cadence.dto.generic.GlobalSearchDTO;
 import com.project.cadence.service.GenericService;
-import com.project.cadence.service.JwtService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1")
 public class GenericController {
     private final GenericService genericService;
-    private final JwtService jwtService;
 
     @GetMapping("/search")
     public ResponseEntity<ApiResponseDTO<GlobalSearchDTO>> getSearchResponse(
@@ -28,8 +27,7 @@ public class GenericController {
     }
 
     @GetMapping("/discover")
-    public ResponseEntity<ApiResponseDTO<DiscoverDTO>> getDiscoveryFeed(HttpServletRequest request) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return genericService.getDiscoveryFeed(email);
+    public ResponseEntity<ApiResponseDTO<DiscoverDTO>> getDiscoveryFeed(@AuthenticationPrincipal UserDetails userDetails) {
+        return genericService.getDiscoveryFeed(userDetails.getUsername());
     }
 }

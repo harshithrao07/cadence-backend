@@ -12,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,12 +22,8 @@ import java.util.*;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserService {
+public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
-
-    public Optional<User> loadUserByEmail(String email) {
-        return this.userRepository.findByEmail(email);
-    }
 
     private boolean authenticatedUserMatchesProfileLookup(String tokenEmail, String userId) {
         Optional<User> user = userRepository.findById(userId);
@@ -69,6 +68,8 @@ public class UserService {
             List<PlaylistPreviewDTO> likedPlaylistsPreview = new ArrayList<>(); // for owner only
             if (matches) {
                 user.getLikedPlaylists()
+                        .stream()
+                        .filter(p -> p.getVisibility() != PlaylistVisibility.PRIVATE)
                         .forEach(p ->
                                 likedPlaylistsPreview.add(
                                         new PlaylistPreviewDTO(
@@ -107,7 +108,9 @@ public class UserService {
                     user.getProfileUrl(),
                     createdPlaylistsPreview,
                     likedPlaylistsPreview,
-                    artistFollowingPreview
+                    artistFollowingPreview,
+                    user.isEmailVerified(),
+                    matches
             );
 
             return ResponseEntity.ok(
@@ -154,8 +157,9 @@ public class UserService {
         }
     }
 
-    public Role getUserRoleFromRepository(String email) {
-        return userRepository.getRoleByEmail(email);
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        return userRepository.findByEmail(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
-
 }

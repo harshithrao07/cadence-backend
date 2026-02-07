@@ -3,14 +3,13 @@ package com.project.cadence.controller;
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.user.UserProfileChangeDTO;
 import com.project.cadence.dto.user.UserProfileDTO;
-import com.project.cadence.model.Role;
-import com.project.cadence.service.JwtService;
 import com.project.cadence.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,25 +17,25 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/user")
 public class UserController {
     private final UserService userService;
-    private final JwtService jwtService;
 
     @GetMapping(path = "/{userId}")
-    public ResponseEntity<ApiResponseDTO<UserProfileDTO>> getUserProfile(HttpServletRequest request, @PathVariable("userId") String userId) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return userService.getUserProfile(userId, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<UserProfileDTO>> getUserProfile(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("userId") String userId) {
+        return userService.getUserProfile(userId, userDetails.getUsername());
     }
 
     @PutMapping(path = "/{userId}")
-    public ResponseEntity<ApiResponseDTO<Void>> putUserProfile(HttpServletRequest request, @PathVariable("userId") String userId, @RequestBody UserProfileChangeDTO userProfileChangeDTO) {
-        String tokenEmail = jwtService.getEmailFromHttpRequest(request);
-        return userService.putUserProfile(userId, userProfileChangeDTO, tokenEmail);
+    public ResponseEntity<ApiResponseDTO<Void>> putUserProfile(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("userId") String userId, @RequestBody UserProfileChangeDTO userProfileChangeDTO) {
+        return userService.putUserProfile(userId, userProfileChangeDTO, userDetails.getUsername());
     }
 
     @GetMapping(path = "/isAdmin")
-    public ResponseEntity<Boolean> isAdmin(@NotNull HttpServletRequest request) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
+    public ResponseEntity<Boolean> isAdmin(@AuthenticationPrincipal UserDetails userDetails) {
+        boolean isAdmin = userDetails.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+        if (isAdmin) {
             return ResponseEntity.status(HttpStatus.OK).body(true);
+        } else {
+            return ResponseEntity.status(HttpStatus.OK).body(false);
         }
-        return ResponseEntity.status(HttpStatus.OK).body(false);
     }
 }

@@ -3,6 +3,7 @@ package com.project.cadence.controller;
 import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.auth.*;
 import com.project.cadence.service.AuthenticationService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,13 +30,14 @@ public class AuthenticationController {
         return authenticationService.authenticate(authenticateRequestDTO);
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponseDTO<String>> refreshToken(@Valid @RequestBody RefreshTokenRequestDTO refreshTokenRequestDTO) {
-        return authenticationService.refreshToken(refreshTokenRequestDTO);
-    }
-
     @PostMapping("/validateEmail")
     public ResponseEntity<ApiResponseDTO<Boolean>> validateEmail(@Valid @RequestBody String email) {
         return authenticationService.validateEmail(email);
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<String> logout(HttpServletResponse response) {
+        return authenticationService.logout(response);
+    }
+
 }

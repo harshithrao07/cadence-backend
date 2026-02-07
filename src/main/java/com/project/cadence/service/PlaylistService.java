@@ -53,7 +53,7 @@ public class PlaylistService {
             }
 
             playlist.setName(upsertPlaylistDTO.name());
-            upsertPlaylistDTO.playlistVisibility().ifPresent(playlist::setVisibility);
+            upsertPlaylistDTO.visibility().ifPresent(playlist::setVisibility);
 
             Playlist upsertedPlaylist = playlistRepository.save(playlist);
             return ResponseEntity.ok(new ApiResponseDTO<>(true, "Successfully upserted playlist", upsertedPlaylist.getId()));

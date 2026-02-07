@@ -4,12 +4,10 @@ import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.record.UpsertRecordDTO;
 import com.project.cadence.dto.record.RecordPreviewDTO;
 import com.project.cadence.dto.record.UpsertRecordResponseDTO;
-import com.project.cadence.service.JwtService;
 import com.project.cadence.service.RecordService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,23 +18,18 @@ import java.util.List;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/record")
 public class RecordController {
-    private final JwtService jwtService;
     private final RecordService recordService;
 
     @PostMapping("/upsert")
-    public ResponseEntity<ApiResponseDTO<UpsertRecordResponseDTO>> upsertNewRecord(HttpServletRequest request, @Validated @RequestBody UpsertRecordDTO upsertRecordDTO) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return recordService.upsertNewRecord(upsertRecordDTO);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponseDTO<UpsertRecordResponseDTO>> upsertNewRecord(@Validated @RequestBody UpsertRecordDTO upsertRecordDTO) {
+        return recordService.upsertNewRecord(upsertRecordDTO);
     }
 
     @DeleteMapping("/delete/{recordId}")
-    public ResponseEntity<ApiResponseDTO<Void>> deleteRecord(HttpServletRequest request, @PathVariable("recordId") String recordId) {
-        if (jwtService.checkIfAdminFromHttpRequest(request)) {
-            return recordService.deleteRecord(recordId);
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiResponseDTO<>(false, "You are not authorized to perform this operation", null));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteRecord(@PathVariable("recordId") String recordId) {
+        return recordService.deleteRecord(recordId);
     }
 
     @GetMapping("/all")

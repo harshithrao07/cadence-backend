@@ -44,13 +44,10 @@ public class AwsService {
         return amazonS3.generatePresignedUrl(s3BucketName, fileName, calendar.getTime(), httpMethod).toString();
     }
 
-    @Async
     public boolean findByName(String fileName) {
         return amazonS3.doesObjectExist(s3BucketName, fileName);
     }
 
-
-    @Async
     public String getPresignedUrl(String category, String subCategory, String primaryKey, HttpMethod httpMethod) {
         String fileName = category + "/" + subCategory + "/" + primaryKey;
         log.info("Generated file name '{}' for saving in bucket '{}'", fileName, s3BucketName);

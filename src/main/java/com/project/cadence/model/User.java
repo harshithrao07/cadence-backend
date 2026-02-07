@@ -2,6 +2,9 @@ package com.project.cadence.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.*;
 
@@ -19,7 +22,7 @@ import java.util.*;
 )
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString(onlyExplicitlyIncluded = true)
-public class User {
+public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
@@ -33,7 +36,7 @@ public class User {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash")
     private String passwordHash;
 
     @Column(name = "profile_url")
@@ -43,6 +46,12 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, updatable = false)
     private Role role = Role.USER;
+
+    private OAuth2Provider provider;
+
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
 
     @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
@@ -85,4 +94,20 @@ public class User {
     )
     @OrderColumn(name = "follow_order")
     private List<Artist> artistFollowing = new ArrayList<>();
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return this.passwordHash;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
 }

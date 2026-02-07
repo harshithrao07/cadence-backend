@@ -4,11 +4,11 @@ import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.playlist.PlaylistPreviewDTO;
 import com.project.cadence.dto.playlist.UpsertPlaylistDTO;
 import com.project.cadence.dto.song.EachSongDTO;
-import com.project.cadence.service.JwtService;
 import com.project.cadence.service.PlaylistService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,78 +20,69 @@ import java.util.List;
 public class PlaylistController {
 
     private final PlaylistService playlistService;
-    private final JwtService jwtService;
 
     @GetMapping("/all")
     public ResponseEntity<ApiResponseDTO<List<PlaylistPreviewDTO>>> getAllPlaylists(
-            HttpServletRequest request
+            @AuthenticationPrincipal UserDetails userDetails
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.getAllPlaylists(email);
+        return playlistService.getAllPlaylists(userDetails.getUsername());
     }
 
     @PostMapping("/upsert")
     public ResponseEntity<ApiResponseDTO<String>> addNewPlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Validated @RequestBody UpsertPlaylistDTO upsertPlaylistDTO
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.upsertPlaylist(email, upsertPlaylistDTO);
+        return playlistService.upsertPlaylist(userDetails.getUsername(), upsertPlaylistDTO);
     }
 
     @PutMapping("/{playlistId}/song/{songId}")
     public ResponseEntity<ApiResponseDTO<Void>> addSongToPlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId,
             @PathVariable String songId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.addSongToPlaylist(email, playlistId, songId);
+        return playlistService.addSongToPlaylist(userDetails.getUsername(), playlistId, songId);
     }
 
     @DeleteMapping("/{playlistId}/song/{songId}")
     public ResponseEntity<ApiResponseDTO<Void>> removeSongFromPlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId,
             @PathVariable String songId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.removeSongFromPlaylist(email, playlistId, songId);
+        return playlistService.removeSongFromPlaylist(userDetails.getUsername(), playlistId, songId);
     }
 
     @PutMapping("/{playlistId}/like")
     public ResponseEntity<ApiResponseDTO<Void>> likePlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.likePlaylist(email, playlistId);
+        return playlistService.likePlaylist(userDetails.getUsername(), playlistId);
     }
 
     @GetMapping("/{playlistId}")
     public ResponseEntity<ApiResponseDTO<PlaylistPreviewDTO>> getPlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.getPlaylist(email, playlistId);
+        return playlistService.getPlaylist(userDetails.getUsername(), playlistId);
     }
 
     @GetMapping("/{playlistId}/songs")
     public ResponseEntity<ApiResponseDTO<List<EachSongDTO>>> getSongsFromPlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.getSongsFromPlaylist(email, playlistId);
+        return playlistService.getSongsFromPlaylist(userDetails.getUsername(), playlistId);
     }
 
     @DeleteMapping("/{playlistId}")
     public ResponseEntity<ApiResponseDTO<Void>> deletePlaylist(
-            HttpServletRequest request,
+            @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable String playlistId
     ) {
-        String email = jwtService.getEmailFromHttpRequest(request);
-        return playlistService.deletePlaylist(email, playlistId);
+        return playlistService.deletePlaylist(userDetails.getUsername(), playlistId);
     }
 }
