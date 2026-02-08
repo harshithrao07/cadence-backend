@@ -37,7 +37,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         String refreshToken = jwtUtil.generateToken(user.getEmail(), 7 * 24 * 60);
 
         response.sendRedirect(
-                frontendUrl + "/auth/success?token=" + accessToken + "&refresh= " + refreshToken + "&userId=" + user.getId()
+                frontendUrl + "/auth/success?token=" + accessToken + "&refresh=" + refreshToken + "&userId=" + user.getId()
         );
     }
 }
