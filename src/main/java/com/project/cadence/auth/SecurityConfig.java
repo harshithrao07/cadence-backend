@@ -3,6 +3,7 @@ package com.project.cadence.auth;
 import com.project.cadence.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,10 +33,12 @@ import java.util.List;
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
     private final JwtUtil jwtUtil;
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Value("${frontend.url}")
     private String frontendUrl;
@@ -48,7 +54,8 @@ public class SecurityConfig {
         JwtRefreshFilter jwtRefreshFilter = new JwtRefreshFilter(authenticationManager, jwtUtil);
 
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/app/**").permitAll()
+                        .requestMatchers("/auth/**", "/app/**", "/api/v1/song/stream/**").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -64,6 +71,13 @@ public class SecurityConfig {
                             response.getWriter().write("{\"error\":\"Unauthorized\"}");
                         })
                         .accessDeniedHandler((request, response, ex) -> {
+                            logger.warn(
+                                    "Access denied: method={} uri={} user={} authHeader={}",
+                                    request.getMethod(),
+                                    request.getRequestURI(),
+                                    request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "anonymous",
+                                    request.getHeader("Authorization")
+                            );
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType("application/json");
                             response.getWriter().write("{\"error\":\"Forbidden\"}");
