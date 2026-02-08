@@ -48,7 +48,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         response.setCharacterEncoding("UTF-8");
 
         response.sendRedirect(
-                frontendUrl + "/oauth-success?token=" + accessToken + "&userId=" + user.getId()
+                frontendUrl + "/auth/success?token=" + accessToken + "&userId=" + user.getId()
         );
     }
 }
