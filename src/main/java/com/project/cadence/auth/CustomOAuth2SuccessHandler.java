@@ -39,6 +39,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
                 .secure(true)
+                .sameSite("None")
                 .path("/auth/v1/refresh")
                 .maxAge(7 * 24 * 60 * 60)
                 .build();
