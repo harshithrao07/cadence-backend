@@ -36,20 +36,8 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         String accessToken = jwtUtil.generateToken(user.getEmail(), 15);
         String refreshToken = jwtUtil.generateToken(user.getEmail(), 7 * 24 * 60);
 
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
-                .path("/auth/v1/refresh")
-                .maxAge(7 * 24 * 60 * 60)
-                .build();
-
-        response.addHeader("Set-Cookie", cookie.toString());
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-
         response.sendRedirect(
-                frontendUrl + "/auth/success?token=" + accessToken + "&userId=" + user.getId()
+                frontendUrl + "/auth/success?token=" + accessToken + "&refresh= " + refreshToken + "&userId=" + user.getId()
         );
     }
 }

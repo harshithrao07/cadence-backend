@@ -6,17 +6,13 @@ import com.project.cadence.events.UserCreatedEvent;
 import com.project.cadence.model.*;
 import com.project.cadence.repository.UserRepository;
 import com.project.cadence.utils.JwtUtil;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -65,20 +61,11 @@ public class AuthenticationService {
             String accessToken = jwtUtil.generateToken(savedUser.getEmail(), 15);
             String refreshToken = jwtUtil.generateToken(savedUser.getEmail(), 7 * 24 * 60);
 
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("None")
-                    .path("/auth/v1/refresh")
-                    .maxAge(7 * 24 * 60 * 60)
-                    .build();
-
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(new ApiResponseDTO<>(
                             true,
                             "User registered successfully",
-                            new AuthenticationResponseDTO(savedUser.getId(), accessToken)
+                            new AuthenticationResponseDTO(savedUser.getId(), accessToken, refreshToken)
                     ));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
@@ -100,20 +87,11 @@ public class AuthenticationService {
             String accessToken = jwtUtil.generateToken(user.get().getEmail(), 15);
             String refreshToken = jwtUtil.generateToken(user.get().getEmail(), 7 * 24 * 60);
 
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                    .httpOnly(true)
-                    .secure(true)
-                    .sameSite("None")
-                    .path("/auth/v1/refresh")
-                    .maxAge(7 * 24 * 60 * 60)
-                    .build();
-
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
                     .body(new ApiResponseDTO<>(
                             true,
                             "User registered successfully",
-                            new AuthenticationResponseDTO(user.get().getId(), accessToken)
+                            new AuthenticationResponseDTO(user.get().getId(), accessToken, refreshToken)
                     ));
         } catch (Exception e) {
             log.error("An exception has occurred {}", e.getMessage(), e);
@@ -130,15 +108,5 @@ public class AuthenticationService {
             log.error("An exception has occurred {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred in the server", null));
         }
-    }
-
-    public ResponseEntity<String> logout(HttpServletResponse response) {
-        Cookie cookie = new Cookie("refreshToken", null);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(0);
-        response.addCookie(cookie);
-        return ResponseEntity.ok("Logged out successfully");
     }
 }

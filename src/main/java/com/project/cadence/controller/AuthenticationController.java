@@ -34,10 +34,4 @@ public class AuthenticationController {
     public ResponseEntity<ApiResponseDTO<Boolean>> validateEmail(@Valid @RequestBody String email) {
         return authenticationService.validateEmail(email);
     }
-
-    @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletResponse response) {
-        return authenticationService.logout(response);
-    }
-
 }
