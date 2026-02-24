@@ -1,20 +1,19 @@
-package com.project.cadence.listeners;
+package com.project.cadence.consumers;
 
+import com.project.cadence.dto.Topics;
 import com.project.cadence.events.RecordCreatedEvent;
 import com.project.cadence.model.Artist;
 import com.project.cadence.model.Record;
 import com.project.cadence.model.User;
 import com.project.cadence.repository.RecordRepository;
 import jakarta.mail.internet.MimeMessage;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,11 +26,9 @@ public class RecordCreatedListener {
     @Value("${frontend.url}")
     private String frontendUrl;
 
-    @Async
-    @Transactional
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @KafkaListener(topics = Topics.RECORD_CREATED_TOPIC, groupId = "order-group")
     public void notifyFollowersOfNewRelease(RecordCreatedEvent event) {
-        Record record = recordRepository.findById(event.recordId())
+        Record record = recordRepository.findById(event.getRecordId())
                 .orElseThrow();
 
         String recordTitle = record.getTitle();
@@ -54,6 +51,7 @@ public class RecordCreatedListener {
                 );
     }
 
+    @Async
     private void sendReleaseMail(String email,
                                  String recordTitle,
                                  String artistNames, String coverUrl, String recordId) {

@@ -1,4 +1,4 @@
-package com.project.cadence.listeners;
+package com.project.cadence.consumers;
 
 import com.project.cadence.events.StreamSongEvent;
 import com.project.cadence.model.*;
