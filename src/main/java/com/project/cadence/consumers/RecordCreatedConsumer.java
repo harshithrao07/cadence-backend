@@ -20,13 +20,13 @@ import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
-public class RecordCreatedListener {
+public class RecordCreatedConsumer {
     private final RecordRepository recordRepository;
     private final JavaMailSender mailSender;
     @Value("${frontend.url}")
     private String frontendUrl;
 
-    @KafkaListener(topics = Topics.RECORD_CREATED_TOPIC, groupId = "order-group")
+    @KafkaListener(topics = Topics.RECORD_CREATED_TOPIC, groupId = "cadence-group")
     public void notifyFollowersOfNewRelease(RecordCreatedEvent event) {
         Record record = recordRepository.findById(event.getRecordId())
                 .orElseThrow();

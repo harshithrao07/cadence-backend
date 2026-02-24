@@ -4,6 +4,7 @@ import com.project.cadence.dto.ApiResponseDTO;
 import com.project.cadence.dto.auth.*;
 import com.project.cadence.events.UserCreatedEvent;
 import com.project.cadence.model.*;
+import com.project.cadence.producers.UserCreatedProducer;
 import com.project.cadence.repository.UserRepository;
 import com.project.cadence.utils.JwtUtil;
 import jakarta.transaction.Transactional;
@@ -11,7 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,7 +25,7 @@ import java.util.Optional;
 public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationEventPublisher publisher;
+    private final UserCreatedProducer producer;
     private final JwtUtil jwtUtil;
 
     @Transactional
@@ -52,7 +52,7 @@ public class AuthenticationService {
                     .build();
 
             User savedUser = userRepository.save(user);
-            publisher.publishEvent(new UserCreatedEvent(savedUser.getId()));
+            producer.send(new UserCreatedEvent(savedUser.getId()));
 
             if (savedUser.getId() == null) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponseDTO<>(false, "An error occurred while creating the user", null));

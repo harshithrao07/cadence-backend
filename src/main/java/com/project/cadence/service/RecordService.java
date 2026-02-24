@@ -11,6 +11,7 @@ import com.project.cadence.dto.song.UpsertSongDTO;
 import com.project.cadence.events.RecordCreatedEvent;
 import com.project.cadence.model.*;
 import com.project.cadence.model.Record;
+import com.project.cadence.producers.RecordCreatedProducer;
 import com.project.cadence.repository.ArtistRepository;
 import com.project.cadence.repository.GenreRepository;
 import com.project.cadence.repository.RecordRepository;
@@ -18,7 +19,6 @@ import com.project.cadence.repository.SongRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,7 +39,7 @@ public class RecordService {
     private final GenreRepository genreRepository;
     private final SongRepository songRepository;
     private final AwsService awsService;
-    private final ApplicationEventPublisher publisher;
+    private final RecordCreatedProducer producer;
 
     @Transactional
     public ResponseEntity<ApiResponseDTO<UpsertRecordResponseDTO>> upsertNewRecord(UpsertRecordDTO upsertRecordDTO) {
@@ -119,7 +119,7 @@ public class RecordService {
             record.getSongs().clear();
             record.getSongs().addAll(songs);
             Record savedRecord = recordRepository.save(record);
-            publisher.publishEvent(new RecordCreatedEvent(record.getId()));
+            producer.send(new RecordCreatedEvent(record.getId()));
 
             savedRecord.getSongs().forEach(song -> {
                 String objectKey = "song/song_url/" + song.getId();

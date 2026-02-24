@@ -4,17 +4,17 @@ import com.project.cadence.events.UserCreatedEvent;
 import com.project.cadence.model.OAuth2Provider;
 import com.project.cadence.model.Role;
 import com.project.cadence.model.User;
+import com.project.cadence.producers.UserCreatedProducer;
 import com.project.cadence.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class OAuthUserService {
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher publisher;
+    private final UserCreatedProducer producer;
 
     @Transactional
     public User findOrCreateUser(String email, String name, String picture) {
@@ -29,7 +29,7 @@ public class OAuthUserService {
 
                     User saved = userRepository.save(newUser);
 
-                    publisher.publishEvent(
+                    producer.send(
                             new UserCreatedEvent(saved.getId())
                     );
 

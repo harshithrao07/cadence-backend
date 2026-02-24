@@ -1,4 +1,12 @@
 package com.project.cadence.events;
 
-public record UserCreatedEvent(String userId) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@RequiredArgsConstructor
+public class UserCreatedEvent {
+    private String userId;
 }

@@ -8,10 +8,10 @@ import com.project.cadence.dto.record.RecordPreviewWithCoverImageDTO;
 import com.project.cadence.dto.song.*;
 import com.project.cadence.events.StreamSongEvent;
 import com.project.cadence.model.*;
+import com.project.cadence.producers.StreamSongProducer;
 import com.project.cadence.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
@@ -33,7 +33,7 @@ public class SongService {
     private final SongRepository songRepository;
     private final AwsService awsService;
     private final UserRepository userRepository;
-    private final ApplicationEventPublisher publisher;
+    private final StreamSongProducer producer;
 
     public ResponseEntity<ApiResponseDTO<List<EachSongDTO>>> getAllSongsByRecordId(String recordId) {
         try {
@@ -131,7 +131,7 @@ public class SongService {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
             }
 
-            publisher.publishEvent(new StreamSongEvent(user.getId(), songId));
+            producer.send(new StreamSongEvent(user.getId(), songId));
 
             String songUrl = song.getSongUrl();
             String objectKey = awsService.extractKeyFromUrl(songUrl);
