@@ -34,7 +34,7 @@ public class CustomOAuth2SuccessHandler implements AuthenticationSuccessHandler 
         User user = oAuthUserService.findOrCreateUser(email, name, picture);
 
         String accessToken = jwtUtil.generateToken(user.getEmail(), 15);
-        String refreshToken = jwtUtil.generateToken(user.getEmail(), 7 * 24 * 60);
+        String refreshToken = jwtUtil.generateToken(user.getEmail(), 7L * 24 * 60);
 
         response.sendRedirect(
                 frontendUrl + "/auth/success?token=" + accessToken + "&refresh=" + refreshToken + "&userId=" + user.getId()

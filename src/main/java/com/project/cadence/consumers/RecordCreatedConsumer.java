@@ -52,7 +52,7 @@ public class RecordCreatedConsumer {
     }
 
     @Async
-    private void sendReleaseMail(String email,
+    public void sendReleaseMail(String email,
                                  String recordTitle,
                                  String artistNames, String coverUrl, String recordId) {
 

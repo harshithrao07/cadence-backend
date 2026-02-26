@@ -59,7 +59,7 @@ public class AuthenticationService {
             }
 
             String accessToken = jwtUtil.generateToken(savedUser.getEmail(), 15);
-            String refreshToken = jwtUtil.generateToken(savedUser.getEmail(), 7 * 24 * 60);
+            String refreshToken = jwtUtil.generateToken(savedUser.getEmail(), 7L * 24 * 60);
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponseDTO<>(
@@ -85,7 +85,7 @@ public class AuthenticationService {
             }
 
             String accessToken = jwtUtil.generateToken(user.get().getEmail(), 15);
-            String refreshToken = jwtUtil.generateToken(user.get().getEmail(), 7 * 24 * 60);
+            String refreshToken = jwtUtil.generateToken(user.get().getEmail(), 7L * 24 * 60);
 
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponseDTO<>(
